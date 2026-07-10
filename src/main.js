@@ -1,10 +1,12 @@
 import * as THREE from 'three'
 import './styles.css'
+import { createCat, createChicken, createDog } from './animal-assets.js'
 import { applyI18n, line, locale, t } from './i18n.js'
-import { LEVELS, hasPassedLevel, levelMission, levelTitle, objectiveProgress } from './levels.js'
+import { LEVELS, animalImpulse, hasPassedLevel, levelMission, levelTitle, objectiveProgress } from './levels.js'
 import { initLeaderboard, snapshotPreRunBest, submitFinalScore } from './leaderboard.js'
 import {
   playAim,
+  playAnimalHit,
   playBounce,
   playBullseye,
   playClick,
@@ -97,6 +99,7 @@ const state = {
   completedLevels: new Set(storedProgress.cleared),
   levelPassed: false,
   targetBaseX: 0,
+  animalHitThisThrow: false,
 }
 
 const currentLevel = () => LEVELS[state.selectedLevel]
@@ -162,6 +165,11 @@ scene.add(targetGroup)
 const packageGroup = createPackage()
 packageGroup.position.copy(PACKAGE_START)
 scene.add(packageGroup)
+
+const levelSceneGroups = LEVELS.map((level) => createLevelScene(level.scene))
+levelSceneGroups.forEach((group) => scene.add(group))
+const animalRoster = createAnimalRoster()
+animalRoster.forEach((entry) => scene.add(entry.group))
 
 const trajectoryGroup = new THREE.Group()
 const trajectoryDots = []
@@ -328,12 +336,15 @@ function createPackage() {
   )
   box.castShadow = true
   box.receiveShadow = true
+  box.userData.packagePart = 'box'
   group.add(box)
   const tapeMaterial = new THREE.MeshStandardMaterial({ color: 0xf7d58b, roughness: 0.72 })
   const tapeTop = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.535, 0.49), tapeMaterial)
+  tapeTop.userData.packagePart = 'tape'
   group.add(tapeTop)
   const label = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.2), new THREE.MeshBasicMaterial({ map: makeLabelTexture() }))
   label.position.set(0.18, 0.03, 0.246)
+  label.userData.packagePart = 'label'
   group.add(label)
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.48, 24),
@@ -346,7 +357,7 @@ function createPackage() {
   return group
 }
 
-function makeLabelTexture() {
+function makeLabelTexture(text = 'RD / 01', accent = '#f05d4e') {
   const canvas = document.createElement('canvas')
   canvas.width = 160
   canvas.height = 92
@@ -357,9 +368,9 @@ function makeLabelTexture() {
   ctx.lineWidth = 5
   ctx.strokeRect(6, 6, 148, 80)
   ctx.fillStyle = '#27283a'
-  ctx.font = 'bold 22px Arial'
-  ctx.fillText('RD / 08', 17, 34)
-  ctx.fillStyle = '#f05d4e'
+  ctx.font = `bold ${text.length > 8 ? 17 : 22}px Arial`
+  ctx.fillText(text, 17, 34)
+  ctx.fillStyle = accent
   ctx.fillRect(17, 48, 91, 9)
   ctx.fillRect(17, 65, 125, 7)
   const texture = new THREE.CanvasTexture(canvas)
@@ -379,6 +390,154 @@ function createWindStreaks() {
     group.add(streak)
   }
   return group
+}
+
+function sceneMaterial(color, options = {}) {
+  return new THREE.MeshStandardMaterial({ color, roughness: options.roughness ?? 0.82, metalness: options.metalness ?? 0.02, transparent: options.opacity < 1, opacity: options.opacity ?? 1 })
+}
+
+function sceneBox(group, size, color, position, options = {}) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), sceneMaterial(color, options))
+  mesh.position.set(...position)
+  mesh.castShadow = options.castShadow !== false
+  mesh.receiveShadow = true
+  group.add(mesh)
+  return mesh
+}
+
+function createLevelScene(kind) {
+  const group = new THREE.Group()
+  if (kind === 'depot') {
+    sceneBox(group, [0.9, 0.65, 0.8], 0xd99a5f, [-3.15, 0.82, -6.6])
+    sceneBox(group, [0.65, 0.45, 0.65], 0xf05d4e, [-2.55, 0.7, -6.2])
+  } else if (kind === 'laundry') {
+    for (const x of [-3.45, 3.45]) sceneBox(group, [0.08, 2.15, 0.08], 0x4a465d, [x, 1.55, -15.1])
+    for (const z of [-15.05, -14.7]) sceneBox(group, [6.9, 0.035, 0.035], 0xf4ead8, [0, 2.15, z], { castShadow: false })
+    const cloths = [[-2.2, 0xf05d4e], [-0.75, 0xf7d58b], [0.8, 0x79d7d2], [2.2, 0x8a6aa6]]
+    cloths.forEach(([x, color], index) => sceneBox(group, [0.75, 0.78, 0.04], color, [x, 1.75 - (index % 2) * 0.08, -15.02]))
+  } else if (kind === 'garden') {
+    const spots = [[-3.25, -15.6], [3.1, -14.8], [-3.4, -7.1], [3.25, -6.8]]
+    spots.forEach(([x, z], index) => {
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.35, 0.5, 8), sceneMaterial(index % 2 ? 0xf05d4e : 0xd99a5f))
+      pot.position.set(x, 0.76, z)
+      pot.castShadow = true
+      group.add(pot)
+      const plant = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), sceneMaterial(index % 2 ? 0x5d9b67 : 0x79a75d))
+      plant.position.set(x, 1.23, z)
+      plant.castShadow = true
+      group.add(plant)
+    })
+  } else if (kind === 'neon') {
+    for (const x of [-3.15, 3.15]) {
+      const panel = sceneBox(group, [1.45, 0.08, 2.1], 0x4b5b78, [x, 0.87, -14.5], { metalness: 0.18 })
+      panel.rotation.x = -0.18
+      sceneBox(group, [1.5, 0.035, 0.06], 0x79d7d2, [x, 0.95, -13.48], { castShadow: false })
+    }
+  } else if (kind === 'glasshouse') {
+    sceneBox(group, [2.5, 0.08, 3.2], 0xf4ead8, [3.05, 0.62, -14.4])
+    for (const x of [2, 4.1]) for (const z of [-15.8, -13]) sceneBox(group, [0.07, 1.8, 0.07], 0x5c5c68, [x, 1.5, z])
+    sceneBox(group, [2.1, 1.35, 0.05], 0x9fd6ff, [3.05, 1.55, -15.8], { opacity: 0.34, castShadow: false })
+    sceneBox(group, [2.1, 1.35, 0.05], 0x9fd6ff, [3.05, 1.55, -13], { opacity: 0.34, castShadow: false })
+  } else if (kind === 'beacon') {
+    for (const [x, z] of [[-3.3, -15.7], [3.3, -15.2], [-3.4, -6.6], [3.4, -7.1]]) {
+      sceneBox(group, [0.18, 1.45, 0.18], 0x353544, [x, 1.25, z])
+      const lamp = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), new THREE.MeshBasicMaterial({ color: 0xf2c14e }))
+      lamp.position.set(x, 2.08, z)
+      group.add(lamp)
+    }
+  }
+  return group
+}
+
+function createPatrolPath() {
+  const group = new THREE.Group()
+  const material = new THREE.MeshBasicMaterial({ color: 0xf05d4e, transparent: true, opacity: 0.32, depthWrite: false })
+  for (let index = 0; index < 11; index += 1) {
+    const mark = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.012, 0.06), material)
+    mark.position.x = -1 + index * 0.2
+    group.add(mark)
+  }
+  return group
+}
+
+function createAnimalRoster() {
+  const specs = [createCat, createDog, createChicken, createCat, createDog]
+  return specs.map((factory) => {
+    const group = factory()
+    const type = group.userData.animalType
+    const scale = type === 'dog' ? 0.82 : type === 'chicken' ? 1.05 : 0.9
+    group.scale.setScalar(scale)
+    group.visible = false
+    const path = createPatrolPath()
+    path.visible = false
+    scene.add(path)
+    return { group, path, config: null, direction: 1, type }
+  })
+}
+
+function updatePackageSkin() {
+  const skin = currentLevel().parcel
+  const box = packageGroup.children.find((child) => child.userData.packagePart === 'box')
+  const tape = packageGroup.children.find((child) => child.userData.packagePart === 'tape')
+  const label = packageGroup.children.find((child) => child.userData.packagePart === 'label')
+  if (box) box.material.color.setHex(skin.box)
+  if (tape) tape.material.color.setHex(skin.tape)
+  if (label) {
+    label.material.map?.dispose()
+    label.material.map = makeLabelTexture(skin.label, `#${skin.box.toString(16).padStart(6, '0')}`)
+    label.material.needsUpdate = true
+  }
+}
+
+function applyLevelPresentation() {
+  const level = currentLevel()
+  levelSceneGroups.forEach((group, index) => { group.visible = index === state.selectedLevel })
+  animalRoster.forEach((entry) => {
+    entry.group.visible = false
+    entry.path.visible = false
+    entry.config = null
+  })
+  level.animals.forEach((config, index) => {
+    const offset = level.id === 6 ? index + 3 : config.type === 'cat' ? 0 : config.type === 'dog' ? 1 : 2
+    const entry = animalRoster[offset]
+    entry.config = config
+    entry.group.visible = true
+    entry.path.visible = true
+    entry.path.scale.x = config.amplitude
+  })
+  updatePackageSkin()
+  state.animalHitThisThrow = false
+}
+
+function updateAnimals(now) {
+  animalRoster.forEach((entry) => {
+    if (!entry.config || !entry.group.visible) return
+    const config = entry.config
+    const phase = (now / 1000) * (Math.PI * 2 / config.period) + (config.phase || 0)
+    entry.direction = Math.cos(phase) >= 0 ? 1 : -1
+    entry.group.position.set(Math.sin(phase) * config.amplitude, ROOF_TOP + 0.08, targetGroup.position.z + config.zOffset)
+    entry.group.rotation.y = entry.direction > 0 ? 0 : Math.PI
+    entry.path.position.set(0, ROOF_TOP + 0.04, targetGroup.position.z + config.zOffset)
+  })
+}
+
+function checkAnimalCollision() {
+  if (!state.flying || state.animalHitThisThrow) return
+  for (const entry of animalRoster) {
+    if (!entry.config || !entry.group.visible) continue
+    const center = entry.group.position.clone()
+    center.y += entry.type === 'chicken' ? 0.45 : 0.52
+    if (packageGroup.position.distanceTo(center) > entry.config.radius) continue
+    state.animalHitThisThrow = true
+    const nextVelocity = animalImpulse(state.velocity, entry.config, entry.direction)
+    state.velocity.set(nextVelocity.x, nextVelocity.y, nextVelocity.z)
+    state.angularVelocity.add(new THREE.Vector3(2.4, entry.direction * 3.2, 1.8))
+    playAnimalHit(entry.type)
+    showBubble(t(`${entry.type}Hit`))
+    popScore(t('animalInterference'), true)
+    burstParticles(0xf05d4e, 10)
+    break
+  }
 }
 
 function setTarget() {
@@ -422,6 +581,7 @@ function resetPackage() {
   state.aiming = false
   state.bounceCount = 0
   state.firstRoofContact = 0
+  state.animalHitThisThrow = false
   hideTrajectory()
 }
 
@@ -524,6 +684,7 @@ function startGame() {
   state.centerStreak = 0
   state.levelPassed = false
   state.unlockAt = performance.now() + GRACE_MS
+  applyLevelPresentation()
   updateHud()
   showScreen('game')
   ui.hud.classList.add('is-visible')
@@ -600,6 +761,7 @@ function goHome() {
   state.isGameOver = false
   state.ready = false
   state.flying = false
+  applyLevelPresentation()
   resetPackage()
   setTarget()
   setWind()
@@ -779,6 +941,7 @@ function updatePackage(dt, now) {
   packageGroup.rotation.x += state.angularVelocity.x * dt
   packageGroup.rotation.y += state.angularVelocity.y * dt
   packageGroup.rotation.z += state.angularVelocity.z * dt
+  checkAnimalCollision()
 
   if (now - lastTrailAt > 70 && state.bounceCount === 0) {
     lastTrailAt = now
@@ -958,6 +1121,7 @@ function resize() {
 function frame(now) {
   const dt = Math.min(0.033, Math.max(0.001, (now - lastFrame) / 1000))
   lastFrame = now
+  updateAnimals(now)
   updatePackage(dt, now)
   updateParticles(dt)
   updateAmbient(dt, now)
@@ -1043,6 +1207,7 @@ window.setInterval(() => {
 
 window.addEventListener('resize', resize)
 resize()
+applyLevelPresentation()
 setTarget()
 setWind()
 resetPackage()

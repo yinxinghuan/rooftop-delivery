@@ -48,5 +48,15 @@ export const playMiss = () => tone(170, 0.3, { type: 'square', freqEnd: 72, gain
 export const playCombo = (combo) => tone(Math.min(940, 660 + combo * 70), 0.07, { gain: 0.045, delay: 0.2 })
 export const playComplete = () => [392, 523, 659, 784].forEach((f, i) => tone(f, 0.18, { delay: i * 0.09, gain: 0.065 }))
 export const playUnlock = () => [659, 784, 988].forEach((f, i) => tone(f, 0.14, { delay: i * 0.11, gain: 0.055 }))
+export const playAnimalHit = (type) => {
+  const sounds = {
+    cat: [720, 980, 0.11, 'triangle'],
+    dog: [210, 150, 0.14, 'square'],
+    chicken: [880, 1240, 0.09, 'square'],
+  }
+  const [start, end, duration, wave] = sounds[type] || sounds.cat
+  tone(start, duration, { type: wave, freqEnd: end, gain: 0.045 })
+  tone(95, 0.08, { type: 'triangle', freqEnd: 72, gain: 0.035 })
+}
 export const playFail = () => tone(220, 0.48, { type: 'triangle', freqEnd: 110, gain: 0.065 })
 export const playClick = () => tone(600, 0.04, { freqEnd: 400, gain: 0.035 })
