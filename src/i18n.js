@@ -1,0 +1,52 @@
+const dictionaries = {
+  en: {
+    route: 'ROUTE', score: 'SCORE', parcelsLeft: 'PARCELS LEFT', crosswind: 'CROSSWIND',
+    throwPower: 'THROW POWER', readTheWind: 'READ THE WIND', kicker: 'DUSK SHIFT · AIRMAIL 08',
+    lede: 'Throw eight parcels across the city. Read the wind. Land on the mark.',
+    dragRelease: 'DRAG UP · RELEASE', dragHint: 'Sideways aims. Distance sets power.',
+    startShift: 'START SHIFT', playHint: 'DRAG UP TO THROW', routeScore: 'ROUTE SCORE',
+    newRecord: 'NEW ROUTE RECORD', best: 'BEST', delivered: 'DELIVERED', bullseyes: 'BULLSEYES',
+    maxCombo: 'MAX COMBO', again: 'RUN IT AGAIN', home: 'BACK TO DEPOT',
+    combo: 'COMBO', miss: 'MISS',
+    shiftComplete: 'SHIFT COMPLETE', shiftLost: 'SHIFT ENDED EARLY',
+    perfect: ['Doorstep perfect!', 'Dead center!', 'Express precision!'],
+    deliveredLine: ['Signed and landed!', 'Right on schedule!', 'That counts!'],
+    edgeLine: ['Roof is close enough!', 'Safe landing!', 'They can find it!'],
+    missLine: ['Package down!', 'That address was lower.', 'Wind took it!'],
+  },
+  zh: {
+    route: '路线', score: '得分', parcelsLeft: '剩余机会', crosswind: '侧风',
+    throwPower: '投掷力度', readTheWind: '先看风向', kicker: '黄昏班次 · 航邮 08',
+    lede: '把 8 件包裹送过城市。看准风向，落到标记中心。',
+    dragRelease: '向上拖动 · 松手投掷', dragHint: '左右瞄准，距离决定力度。',
+    startShift: '开始派送', playHint: '向上拖动投掷', routeScore: '路线得分',
+    newRecord: '新路线纪录', best: '历史最高', delivered: '成功送达', bullseyes: '中心命中',
+    maxCombo: '最高连击', again: '再跑一轮', home: '返回仓库',
+    combo: '连击', miss: '失误',
+    shiftComplete: '本轮派送完成', shiftLost: '本轮提前收车',
+    perfect: ['正中门口！', '中心命中！', '快递员的尊严！'],
+    deliveredLine: ['准时签收！', '稳稳送到！', '这单漂亮！'],
+    edgeLine: ['屋顶也算送到！', '安全落地！', '收件人找得到！'],
+    missLine: ['包裹坠落！', '地址好像在楼下。', '被风带走了！'],
+  },
+}
+
+function detectLocale() {
+  const saved = localStorage.getItem('game_locale')
+  if (saved === 'zh' || saved === 'en') return saved
+  return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
+export const locale = detectLocale()
+export const t = (key) => dictionaries[locale][key] ?? dictionaries.en[key] ?? key
+export const line = (key) => {
+  const entries = dictionaries[locale][key] ?? dictionaries.en[key]
+  return entries[Math.floor(Math.random() * entries.length)]
+}
+
+export function applyI18n(root = document) {
+  root.documentElement.lang = locale
+  root.querySelectorAll('[data-i18n]').forEach((node) => {
+    node.textContent = t(node.dataset.i18n)
+  })
+}

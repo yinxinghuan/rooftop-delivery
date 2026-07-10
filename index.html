@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta name="game-uuid" content="3ecbe73c-4354-438b-8a30-f523370c0324" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" />
+    <title>Rooftop Delivery</title>
+  </head>
+  <body>
+    <div id="app" class="rd-shell">
+      <div id="stage" class="rd-stage" aria-hidden="true"></div>
+      <div class="rd-atmosphere" aria-hidden="true"></div>
+
+      <header id="hud" class="rd-hud" aria-hidden="true">
+        <div class="rd-route-tag">
+          <span data-i18n="route">ROUTE</span>
+          <strong><span id="parcelValue">1</span><small>/8</small></strong>
+        </div>
+        <div class="rd-score-block">
+          <span data-i18n="score">SCORE</span>
+          <strong id="scoreValue">0000</strong>
+        </div>
+        <div class="rd-miss-block">
+          <span data-i18n="parcelsLeft">PARCELS LEFT</span>
+          <div id="missDots" class="rd-miss-dots" aria-label="3 parcels remaining"><i></i><i></i><i></i></div>
+        </div>
+      </header>
+
+      <aside id="windBadge" class="rd-wind" aria-hidden="true">
+        <span class="rd-wind__eyebrow" data-i18n="crosswind">CROSSWIND</span>
+        <div class="rd-wind__reading">
+          <b id="windArrow">→</b>
+          <strong id="windValue">0.0</strong>
+        </div>
+      </aside>
+
+      <div id="aimUi" class="rd-aim" aria-hidden="true">
+        <div class="rd-aim__track"><i id="powerFill"></i></div>
+        <span data-i18n="throwPower">THROW POWER</span>
+      </div>
+
+      <div id="graceCard" class="rd-grace-card" aria-hidden="true">
+        <span data-i18n="readTheWind">READ THE WIND</span>
+        <b id="graceCount">3</b>
+      </div>
+
+      <div id="popLayer" class="rd-pop-layer" aria-hidden="true"></div>
+      <div id="bubble" class="rd-bubble" aria-hidden="true"></div>
+      <div id="comboBadge" class="rd-combo" aria-hidden="true">x2 COMBO</div>
+
+      <main id="startScreen" class="rd-screen rd-start is-active">
+        <section class="rd-start__copy">
+          <div class="rd-postmark" aria-hidden="true"><span>EXPRESS</span><b>07·10</b></div>
+          <p class="rd-kicker" data-i18n="kicker">DUSK SHIFT · AIRMAIL 08</p>
+          <h1><span>ROOFTOP</span><em>DELIVERY</em></h1>
+          <p class="rd-start__lede" data-i18n="lede">Throw eight parcels across the city. Read the wind. Land on the mark.</p>
+        </section>
+        <section class="rd-start__ticket">
+          <div class="rd-gesture" aria-hidden="true"><i></i><span>↑</span></div>
+          <div>
+            <strong data-i18n="dragRelease">DRAG UP · RELEASE</strong>
+            <small data-i18n="dragHint">Sideways aims. Distance sets power.</small>
+          </div>
+        </section>
+        <button id="startButton" class="rd-button rd-button--primary" type="button" data-i18n="startShift">START SHIFT</button>
+      </main>
+
+      <main id="gameScreen" class="rd-screen rd-game" aria-hidden="true">
+        <div id="playHint" class="rd-play-hint" data-i18n="playHint">DRAG UP TO THROW</div>
+      </main>
+
+      <main id="endScreen" class="rd-screen rd-end" aria-hidden="true">
+        <section class="rd-receipt">
+          <p id="resultKicker" class="rd-kicker">SHIFT COMPLETE</p>
+          <div id="recordStamp" class="rd-record-stamp" data-i18n="newRecord">NEW ROUTE RECORD</div>
+          <h2 id="finalScore">0000</h2>
+          <span class="rd-receipt__score-label" data-i18n="routeScore">ROUTE SCORE</span>
+          <div class="rd-receipt__rule"></div>
+          <dl>
+            <div><dt data-i18n="best">BEST</dt><dd id="bestScore">0000</dd></div>
+            <div><dt data-i18n="delivered">DELIVERED</dt><dd id="deliveredValue">0/8</dd></div>
+            <div><dt data-i18n="bullseyes">BULLSEYES</dt><dd id="bullseyeValue">0</dd></div>
+            <div><dt data-i18n="maxCombo">MAX COMBO</dt><dd id="maxComboValue">0</dd></div>
+          </dl>
+          <div class="rd-receipt__actions">
+            <button id="againButton" class="rd-button rd-button--primary" type="button" data-i18n="again">RUN IT AGAIN</button>
+            <button id="homeButton" class="rd-button rd-button--quiet" type="button" data-i18n="home">BACK TO DEPOT</button>
+          </div>
+        </section>
+      </main>
+
+      <img class="rd-watermark" src="./img/aigram.svg" alt="" draggable="false" />
+    </div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
