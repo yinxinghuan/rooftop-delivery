@@ -14,7 +14,7 @@ Rooftop Delivery 是独立的 Vite 6 工程，使用原生 JavaScript、Three.js
 - `src/main.js`：Three.js 场景、程序化城市、关卡进度、路线地图、投掷输入、弹道预测、物理更新、落点判断、计分、combo、反馈与三态切换。
 - `src/levels.js`：6 个关卡的固定数值、场景主题、包裹皮肤、动物配置、名称与任务文案、实时目标摘要、动物冲量和严格过关判定。
 - `src/animal-assets.js`：从共享低多边形资产库可移植改编的猫、狗、鸡 builders，使用硬边 BoxGeometry、平面材质和共享识别色。
-- `src/styles.css`：以包裹同款珊瑚橘、深墨紫和纸张米白为统一场景色板的移动端布局、HUD、手势引导、榜单、结算单、动画、触控状态与 reduced-motion 适配。
+- `src/styles.css`：以包裹同款珊瑚橘、深墨紫和纸张米白为统一场景色板的移动端布局、HUD、手势引导、榜单、结算单、动画、触控状态与 reduced-motion 适配；内置 display / condensed / mono 三层邮政字体栈与 10–86px 字阶。
 - `src/leaderboard.js`：榜单读取和标准化、冠军入口、跨用户头像与主页跳转、站外下载态、成绩提交、局前纪录快照与单目标 `score_beat` 通知。
 - `src/i18n.js`：`zh` / `en` 文案、语言检测、DOM 文案注入和随机快递员台词。
 - `src/sounds.js`：Web Audio API 音色封装，覆盖开始、瞄准、发射、弹跳、送达、中心命中、连击、失误、结算和新路线解锁。
@@ -45,6 +45,8 @@ Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`
 
 响应式由 `.rd-shell` 的 `100dvh` 和最大 520px 宽度控制，`resize()` 同步渲染器尺寸与相机宽高比。390 × 720 为主要验证尺寸，桌面宽屏显示圆角设备舞台。界面支持 `prefers-reduced-motion`，用户可见文案全部通过 `t()` 或 `line()` 输出。
 
+字体系统由 `--rd-font-display`、`--rd-font-condensed` 和 `--rd-font-mono` 三个栈组成：Impact / Arial Black 负责英文标题与大数字，Avenir Next Condensed / Arial Narrow 负责任务、按钮和行标题，SFMono 只用于路线编号与微状态；中文缺字时自动回退到 PingFang SC / Microsoft YaHei，并通过 `html[lang="zh"]` 移除英文大写字距。常用字号为 10、12、15、20、40 和 48–86px，标题行高收紧到 0.84–1.0。
+
 `src/leaderboard.js` 在初始化时读取按 UUID 隔离的排行榜，并把第一名渲染到冠军入口。榜单行使用 `minmax(0, 1fr)` 和 `min-width: 0` 保护长用户名；其他玩家的头像和姓名行使用 Click 打开 `openAigramProfile()`，自身行只显示“你”。站外环境不调用平台接口，改为渲染 `https://alteru.app` 下载入口。每局开始由 `snapshotPreRunBest()` 记录平台旧最高分；结算先保存分数，再刷新榜单，筛选 `旧最高分 < 对手分数 < 本局分数` 的最高一名对手并发送一次带海报的 `score_beat` 通知，所有网络失败均静默处理。
 
 ## 4. 扩展点
@@ -61,6 +63,7 @@ Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`
 - 调音效：修改 `src/sounds.js` 中各事件的波形、频率、时长、延迟和增益。
 - 调路线地图与任务 UI：修改 `index.html` 的地图 / 任务容器、`src/main.js` 的 `renderRouteMap()` / `updateObjective()` 和 `src/styles.css` 的 `.rd-map*` / `.rd-objective`。
 - 调 UI 色板：修改 `src/styles.css` 的 `--ui-night`、`--ui-pop`、`--ui-white` 和 `--ui-muted`；当前 `--ui-pop` 与包裹材质统一为 `#F05D4E`。
+- 调字体表现：修改 `src/styles.css` 的 `--rd-font-display`、`--rd-font-condensed`、`--rd-font-mono` 与文件末尾的 Bold postal type system；展示标题保持 900 字重和紧行高，长任务文案不要改用展示字体。
 - 调排行榜：修改 `src/leaderboard.js` 的榜单渲染、通知文案、海报 URL 和分数单位；不得改动永久 UUID，也不要简化 `public/aigram-bridge.js` 的平台信封协议。
 - 换封面：后续默认修改 `gen_poster.py` 的 `PROMPT` 并重新运行，主视觉必须走 Aigram transit `gen-image`，标题由 Pillow 本地合成且只保留主标题；当前 Codex 版本仅因用户明确选稿而保留。保持 `meta.json.cover_url` 为 `/poster.png`。
 - 接平台存档或其他社交功能：复用当前永久 UUID 与 `public/aigram-bridge.js`；排行榜已接入，共享墙与服务器存档尚未接入。

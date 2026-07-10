@@ -939,3 +939,105 @@ button { font: inherit; }
   .rd-level-brief { margin-top: 12px; min-height: 58px; padding-block: 8px; }
   .rd-receipt { max-height: calc(100vh - 26px); overflow-y: auto; touch-action: pan-y; }
 }
+
+/* Bold postal type system: display / condensed UI / mono micro-data. */
+:root {
+  --rd-font-display: Impact, "Arial Black", "Avenir Next Condensed", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --rd-font-condensed: "Avenir Next Condensed", "Arial Narrow", "Roboto Condensed", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --rd-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.rd-start h1 {
+  font-family: var(--rd-font-display);
+  font-size: clamp(52px, 15vw, 76px);
+  font-weight: 900;
+  letter-spacing: -.045em;
+  line-height: .84;
+  transform: scaleX(.96);
+}
+
+.rd-champion__name {
+  font-family: var(--rd-font-condensed);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: .045em;
+}
+.rd-champion__score { font-family: var(--rd-font-display); font-size: 13px; letter-spacing: .02em; }
+
+.rd-route-tag span,
+.rd-score-block span,
+.rd-miss-block > span,
+.rd-wind__eyebrow,
+.rd-aim span {
+  font-family: var(--rd-font-condensed);
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: .055em;
+  line-height: .95;
+}
+.rd-route-tag strong { font-family: var(--rd-font-display); font-size: 29px; letter-spacing: -.035em; }
+.rd-route-tag small { font-family: var(--rd-font-condensed); font-size: 12px; font-weight: 900; }
+.rd-score-block strong { font-family: var(--rd-font-display); font-size: clamp(35px, 9vw, 41px); font-weight: 900; letter-spacing: -.025em; }
+.rd-wind__reading strong { font-family: var(--rd-font-display); font-size: 23px; letter-spacing: .015em; }
+
+.rd-level-brief > span { font-family: var(--rd-font-mono); font-size: 10px; font-weight: 900; }
+.rd-level-brief strong { font-family: var(--rd-font-display); font-size: 18px; font-weight: 900; letter-spacing: -.018em; line-height: 1; }
+.rd-level-brief small { font-family: var(--rd-font-condensed); font-size: 13px; font-weight: 850; letter-spacing: .005em; }
+.rd-objective { font-family: var(--rd-font-condensed); font-size: 11.5px; font-weight: 900; letter-spacing: .015em; }
+
+.rd-start-guide strong,
+.rd-play-hint {
+  font-family: var(--rd-font-display);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+.rd-grace-card span { font-family: var(--rd-font-condensed); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
+.rd-grace-card b { font-family: var(--rd-font-display); font-size: 48px; letter-spacing: -.03em; }
+.rd-score-pop { font-family: var(--rd-font-display); font-size: 40px; letter-spacing: -.025em; }
+.rd-bubble { font-family: var(--rd-font-condensed); font-size: 14px; font-weight: 900; }
+.rd-combo { font-family: var(--rd-font-display); font-size: 16px; letter-spacing: .025em; }
+
+.rd-button {
+  font-family: var(--rd-font-display);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .045em;
+}
+.rd-receipt__actions .rd-button { font-size: 13px; }
+.rd-receipt > .rd-kicker { font-family: var(--rd-font-display); font-size: 14px; letter-spacing: .075em; }
+.rd-receipt__route { font-family: var(--rd-font-mono); font-size: 10px; font-weight: 900; }
+.rd-receipt h2 { font-family: var(--rd-font-display); font-size: clamp(68px, 20vw, 86px); font-weight: 900; letter-spacing: -.045em; }
+.rd-receipt__score-label { font-family: var(--rd-font-condensed); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+.rd-receipt__mission { font-family: var(--rd-font-condensed); font-size: 12.5px; font-weight: 900; line-height: 1.25; }
+.rd-receipt dt { font-family: var(--rd-font-condensed); font-size: 11px; font-weight: 900; letter-spacing: .045em; }
+.rd-receipt dd { font-family: var(--rd-font-display); font-size: 17px; letter-spacing: .01em; }
+.rd-record-stamp { font-family: var(--rd-font-display); font-size: 10px; letter-spacing: .035em; }
+
+.rd-map__card > .rd-kicker,
+.rd-lb__card > .rd-kicker { font-family: var(--rd-font-condensed); font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+.rd-map__title,
+.rd-lb__title { font-family: var(--rd-font-display); font-size: 40px; font-weight: 900; letter-spacing: -.035em; line-height: .9; }
+.rd-map-row__number { font-family: var(--rd-font-display); font-size: 23px; letter-spacing: -.02em; }
+.rd-map-row__body strong { font-family: var(--rd-font-display); font-size: 15.5px; letter-spacing: -.005em; line-height: 1; }
+.rd-map-row__body small { font-family: var(--rd-font-condensed); font-size: 12px; font-weight: 800; }
+.rd-map-row__status { font-family: var(--rd-font-mono); font-size: 10px; font-weight: 900; }
+.rd-lb-row__rank { font-family: var(--rd-font-display); font-size: 15px; }
+.rd-lb-row__name,
+.rd-lb-row__you { font-family: var(--rd-font-condensed); font-size: 15px; font-weight: 900; }
+.rd-lb-row__score { font-family: var(--rd-font-display); font-size: 19px; letter-spacing: .01em; }
+.rd-lb-state { font-family: var(--rd-font-condensed); font-size: 15px; font-weight: 750; }
+.rd-lb-state__link { font-family: var(--rd-font-display); font-size: 14px; letter-spacing: .035em; }
+
+html[lang="zh"] .rd-start h1,
+html[lang="zh"] .rd-button,
+html[lang="zh"] .rd-level-brief strong,
+html[lang="zh"] .rd-level-brief small,
+html[lang="zh"] .rd-objective,
+html[lang="zh"] .rd-map-row__body strong,
+html[lang="zh"] .rd-map-row__body small,
+html[lang="zh"] .rd-receipt__mission,
+html[lang="zh"] .rd-lb-row__name,
+html[lang="zh"] .rd-lb-row__you {
+  letter-spacing: 0;
+}
