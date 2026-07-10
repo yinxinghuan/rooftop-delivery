@@ -12,7 +12,7 @@ Rooftop Delivery 是独立的 Vite 6 工程，使用原生 JavaScript、Three.js
 
 - `index.html`：三态界面、HUD、手势引导、风力标签、瞄准力度条、缓冲提示、冠军入口、排行榜弹层、结算单、平台水印和游戏 UUID。
 - `src/main.js`：Three.js 场景、程序化城市、投掷输入、弹道预测、物理更新、落点判断、计分、combo、反馈与三态切换。
-- `src/styles.css`：以深海军蓝、高饱和钴蓝和暖白为 UI 专属撞色色板的移动端布局、HUD、手势引导、榜单、结算单、动画、触控状态与 reduced-motion 适配。
+- `src/styles.css`：以包裹同款珊瑚橘、深墨紫和纸张米白为统一场景色板的移动端布局、HUD、手势引导、榜单、结算单、动画、触控状态与 reduced-motion 适配。
 - `src/leaderboard.js`：榜单读取和标准化、冠军入口、跨用户头像与主页跳转、站外下载态、成绩提交、局前纪录快照与单目标 `score_beat` 通知。
 - `src/i18n.js`：`zh` / `en` 文案、语言检测、DOM 文案注入和随机快递员台词。
 - `src/sounds.js`：Web Audio API 音色封装，覆盖开始、瞄准、发射、弹跳、送达、中心命中、连击、失误和结算。
@@ -52,7 +52,7 @@ Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`
 - 换城市视觉：修改 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()` 的几何体、材质和灯光，并在 `src/styles.css` 同步天空、邮政标签和 HUD 色值。
 - 改文案与语言：修改 `src/i18n.js` 的 `dictionaries`，不要在 HTML 或主循环里新增硬编码用户文案。
 - 调音效：修改 `src/sounds.js` 中各事件的波形、频率、时长、延迟和增益。
-- 调 UI 与场景反差：修改 `src/styles.css` 的 `--ui-night`、`--ui-pop`、`--ui-white` 和 `--ui-muted`；这些变量只服务界面，不修改 Three.js 场景色板。
+- 调 UI 色板：修改 `src/styles.css` 的 `--ui-night`、`--ui-pop`、`--ui-white` 和 `--ui-muted`；当前 `--ui-pop` 与包裹材质统一为 `#F05D4E`。
 - 调排行榜：修改 `src/leaderboard.js` 的榜单渲染、通知文案、海报 URL 和分数单位；不得改动永久 UUID，也不要简化 `public/aigram-bridge.js` 的平台信封协议。
 - 换封面：后续默认修改 `gen_poster.py` 的 `PROMPT` 并重新运行，主视觉必须走 Aigram transit `gen-image`，标题由 Pillow 本地合成且只保留主标题；当前 Codex 版本仅因用户明确选稿而保留。保持 `meta.json.cover_url` 为 `/poster.png`。
 - 接平台存档或其他社交功能：复用当前永久 UUID 与 `public/aigram-bridge.js`；排行榜已接入，共享墙与服务器存档尚未接入。

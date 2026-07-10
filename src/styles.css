@@ -498,7 +498,7 @@ button { font: inherit; }
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
 
-/* Night-air collision UI: plum structure, coral route, cyan wind. */
+/* Postal flight UI: plum structure, parcel-coral accents, paper labels. */
 .rd-hud {
   top: max(12px, env(safe-area-inset-top));
   grid-template-columns: 86px minmax(0, 1fr) 104px;
@@ -767,15 +767,15 @@ button { font: inherit; }
   .rd-lb__card { max-height: calc(100vh - 28px); }
 }
 
-/* UI palette deliberately contrasts the warm dusk scene. */
+/* UI palette follows the parcel and dusk scene. */
 :root {
-  --ui-night: #10162e;
-  --ui-pop: #4263ff;
-  --ui-white: #fffaf0;
-  --ui-muted: #c5cce8;
+  --ui-night: #27283a;
+  --ui-pop: #f05d4e;
+  --ui-white: #fff5de;
+  --ui-muted: #d9cdb7;
 }
 
-.rd-hud { border-color: rgba(255,250,240,.78); background: rgba(16,22,46,.94); box-shadow: 0 12px 30px rgba(16,22,46,.4), inset 0 1px rgba(255,255,255,.1); }
+.rd-hud { border-color: rgba(255,245,222,.78); background: rgba(39,40,58,.94); box-shadow: 0 12px 30px rgba(39,40,58,.4), inset 0 1px rgba(255,255,255,.1); }
 .rd-route-tag { color: var(--ui-night); background: var(--ui-pop); }
 .rd-route-tag small { color: rgba(17,21,37,.58); }
 .rd-score-block { color: var(--ui-white); }
@@ -785,7 +785,7 @@ button { font: inherit; }
 .rd-miss-dots i { border-color: var(--ui-night); background: var(--ui-night); }
 .rd-miss-dots i::after { background: var(--ui-pop); }
 
-.rd-wind { color: var(--ui-white); border-color: var(--ui-white); background: rgba(16,22,46,.95); box-shadow: 5px 5px 0 var(--ui-pop); }
+.rd-wind { color: var(--ui-white); border-color: var(--ui-white); background: rgba(39,40,58,.95); box-shadow: 5px 5px 0 var(--ui-pop); }
 .rd-wind__eyebrow,
 .rd-wind__reading b { color: var(--ui-pop); }
 
@@ -794,13 +794,13 @@ button { font: inherit; }
 .rd-start-guide { color: var(--ui-white); }
 .rd-start-guide__trail { background: linear-gradient(0deg, var(--ui-pop), var(--ui-white)); }
 .rd-start-guide__trail i { border-color: var(--ui-pop); }
-.rd-start-guide strong { color: var(--ui-white); border-color: rgba(255,250,240,.72); background: rgba(16,22,46,.92); }
-.rd-play-hint { color: var(--ui-white); border-color: var(--ui-white); background: rgba(16,22,46,.92); box-shadow: 4px 4px 0 var(--ui-pop); }
-.rd-grace-card { color: var(--ui-white); border-color: var(--ui-white); background: rgba(16,22,46,.95); box-shadow: 6px 6px 0 var(--ui-pop); }
+.rd-start-guide strong { color: var(--ui-white); border-color: rgba(255,245,222,.72); background: rgba(39,40,58,.92); }
+.rd-play-hint { color: var(--ui-white); border-color: var(--ui-white); background: rgba(39,40,58,.92); box-shadow: 4px 4px 0 var(--ui-pop); }
+.rd-grace-card { color: var(--ui-white); border-color: var(--ui-white); background: rgba(39,40,58,.95); box-shadow: 6px 6px 0 var(--ui-pop); }
 .rd-grace-card span,
 .rd-grace-card b { color: var(--ui-pop); }
 
-.rd-champion { color: var(--ui-white); border-color: var(--ui-white); background: rgba(16,22,46,.95); box-shadow: 5px 5px 0 var(--ui-pop); }
+.rd-champion { color: var(--ui-white); border-color: var(--ui-white); background: rgba(39,40,58,.95); box-shadow: 5px 5px 0 var(--ui-pop); }
 .rd-champion__avatar { color: var(--ui-night); background: var(--ui-pop); }
 .rd-champion__name { color: var(--ui-pop); }
 .rd-champion__score { color: var(--ui-white); }
@@ -812,7 +812,7 @@ button { font: inherit; }
 .rd-lb__close { color: var(--ui-night); background: var(--ui-pop); }
 .rd-lb-row { color: var(--ui-white); border-color: rgba(255,254,244,.18); background: rgba(255,254,244,.07); }
 .rd-lb-row.is-me { border-color: var(--ui-white); background: rgba(255,254,244,.11); }
-.rd-lb-row:first-child { border-color: var(--ui-pop); background: rgba(66,99,255,.12); }
+.rd-lb-row:first-child { border-color: var(--ui-pop); background: rgba(240,93,78,.12); }
 .rd-lb-row__rank,
 .rd-lb-row__you { color: var(--ui-pop); }
 .rd-lb-row__avatar { border-color: var(--ui-pop); color: var(--ui-night); background: var(--ui-white); }
