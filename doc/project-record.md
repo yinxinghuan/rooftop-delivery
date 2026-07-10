@@ -5,7 +5,7 @@
 - 中文名：天台速递
 - 本地目录：`/Users/yin/code/games/rooftop-delivery`
 - 创建日期：2026-07-10
-- 当前状态：已发布、已注册并已在平台列表可见；六关路线升级已上线
+- 当前状态：已发布、已注册并已在平台列表可见；六关主题场景、箱子皮肤与动物干扰已上线
 - 独立仓库：`https://github.com/yinxinghuan/rooftop-delivery`
 - 游玩地址：`https://yinxinghuan.github.io/rooftop-delivery/`
 - Remix 源码包：`https://github.com/yinxinghuan/rooftop-delivery/archive/refs/heads/master.zip`
@@ -52,6 +52,7 @@
 4. `games/games.json` 条目位于数组第一位，分类为 `action`；中心海报为 `posters/rooftop-delivery.png`。
 5. 同事已重跑迁移工具，用户确认平台列表可见该游戏。
 6. 六关路线版本提交 `6490bdc`，GitHub Pages 部署运行 `29090914484` 成功；线上 bundle `index-BP_v6cAC.js` 已检出 `rooftop_delivery_progress_v1`、`SKYLINE FINALE`、`RETRY ROUTE` 和移动目标配置。
+7. 主题场景与动物版本提交 `581d921`，GitHub Pages 部署运行 `29091829210` 成功；线上 bundle `index-DbPdyuwa.js` 已检出猫狗巡逻、鸡碰撞台词、`ANIMAL INTERFERENCE`、温室场景和 `FRAGILE` / `FINAL / 06` 箱子皮肤。
 
 ## 后续待办
 
