@@ -41,7 +41,9 @@ function quadruped(spec) {
   const legZ = bodyWidth / 2 - legWidth / 2 - 0.03
   for (const xSign of [-1, 1]) {
     for (const zSign of [-1, 1]) {
-      box(group, legWidth, legHeight, legWidth, spec.leg, xSign * legX, legHeight / 2, zSign * legZ)
+      const leg = box(group, legWidth, legHeight, legWidth, spec.leg, xSign * legX, legHeight / 2, zSign * legZ)
+      leg.userData.animalPart = 'leg'
+      leg.userData.stepPhase = xSign === zSign ? 0 : Math.PI
       box(group, legWidth + 0.01, 0.09, legWidth + 0.01, spec.hoof, xSign * legX, 0.045, zSign * legZ)
     }
   }
@@ -65,8 +67,10 @@ function quadruped(spec) {
   for (const zSign of [-1, 1]) box(group, 0.1, 0.13, 0.03, 0x241f1c, eyeX, headY + 0.06, zSign * headDepth * 0.26)
 
   const tailHeight = spec.tailHeight
-  box(group, 0.13, tailHeight, 0.13, spec.tail, -bodyLength / 2 - 0.02, bodyY + tailHeight / 2, 0)
-  box(group, 0.13, 0.13, 0.2, spec.tailTip || spec.tail, -bodyLength / 2 - 0.02, bodyY + tailHeight, 0.06)
+  const tail = box(group, 0.13, tailHeight, 0.13, spec.tail, -bodyLength / 2 - 0.02, bodyY + tailHeight / 2, 0)
+  tail.userData.animalPart = 'tail'
+  const tailTip = box(group, 0.13, 0.13, 0.2, spec.tailTip || spec.tail, -bodyLength / 2 - 0.02, bodyY + tailHeight, 0.06)
+  tailTip.userData.animalPart = 'tail'
   return group
 }
 
@@ -108,8 +112,12 @@ export function createChicken() {
   for (let index = 0; index < 3; index += 1) box(chicken, 0.11, 0.13 + (index === 1 ? 0.06 : 0), 0.12, 0xe23b2e, 0.3 + index * 0.1, bodyY + 0.44, 0)
   box(chicken, 0.1, 0.16, 0.1, 0xe23b2e, 0.54, bodyY + 0.02, 0)
   for (const zSign of [-1, 1]) {
-    box(chicken, 0.1, 0.4, 0.34, 0xeee8de, 0, bodyY, zSign * 0.32)
-    box(chicken, 0.08, legHeight, 0.08, 0xf2a23a, 0.06, legHeight / 2, zSign * 0.14)
+    const wing = box(chicken, 0.1, 0.4, 0.34, 0xeee8de, 0, bodyY, zSign * 0.32)
+    wing.userData.animalPart = 'wing'
+    wing.userData.wingSide = zSign
+    const leg = box(chicken, 0.08, legHeight, 0.08, 0xf2a23a, 0.06, legHeight / 2, zSign * 0.14)
+    leg.userData.animalPart = 'leg'
+    leg.userData.stepPhase = zSign > 0 ? 0 : Math.PI
     box(chicken, 0.16, 0.06, 0.16, 0xf2a23a, 0.1, 0.03, zSign * 0.14)
     box(chicken, 0.07, 0.1, 0.03, 0x241f1c, 0.55, bodyY + 0.2, zSign * 0.12)
   }

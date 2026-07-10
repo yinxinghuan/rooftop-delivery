@@ -14,6 +14,7 @@ Rooftop Delivery 是独立的 Vite 6 工程，使用原生 JavaScript、Three.js
 - `src/main.js`：Three.js 场景、程序化城市、关卡进度、路线地图、投掷输入、弹道预测、物理更新、落点判断、计分、combo、反馈与三态切换。
 - `src/levels.js`：6 个关卡的固定数值、场景主题、包裹皮肤、动物配置、名称与任务文案、实时目标摘要、动物冲量和严格过关判定。
 - `src/animal-assets.js`：从共享低多边形资产库可移植改编的猫、狗、鸡 builders，使用硬边 BoxGeometry、平面材质和共享识别色。
+- `src/physics.js`：纯函数屋顶撞击冲量与接地摩擦，负责恢复系数、水平保留、翻滚耦合、角阻尼和接地判定。
 - `src/styles.css`：以包裹同款珊瑚橘、深墨紫和纸张米白为统一场景色板的移动端布局、HUD、手势引导、榜单、结算单、动画、触控状态与 reduced-motion 适配；内置 display / condensed / mono 三层邮政字体栈与 10–86px 字阶。
 - `src/leaderboard.js`：榜单读取和标准化、冠军入口、跨用户头像与主页跳转、站外下载态、成绩提交、局前纪录快照与单目标 `score_beat` 通知。
 - `src/i18n.js`：`zh` / `en` 文案、语言检测、DOM 文案注入和随机快递员台词。
@@ -33,11 +34,13 @@ Rooftop Delivery 是独立的 Vite 6 工程，使用原生 JavaScript、Three.js
 
 状态集中在 `src/main.js` 的 `state` 对象中，以 `isPlaying` 和 `isGameOver` 维护开始、游戏中、结算三个互斥状态。`selectedLevel` 指向当前路线，`unlockedLevel` 表示最高可进入路线，`completedLevels` 保存已通过编号；启动时从 `rooftop_delivery_progress_v1` 恢复，旧格式会按最高解锁路线补齐已通过列表。每局按当前 `LEVELS` 配置初始化包裹数、失误额度、分数、combo、中心连续命中和统计数据；`showScreen()` 统一切换 DOM 屏幕，最高分只在 `endGame()` 中写入本地存储。开始页本身使用 Pointer Down 进入游戏，冠军入口和路线卡在处理器中阻止冒泡，因此打开弹层不会误开局。
 
-Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`、`createPackage()`、`createTarget()`、`createWindStreaks()` 和 `addClouds()` 生成。`createLevelScene()` 为 6 关预建箱堆、晾衣架、花园盆栽、太阳能板、玻璃温室和夜间信标，切关时只显示当前主题。`updatePackageSkin()` 按关卡替换箱体 / 胶带材质并重绘标签 CanvasTexture。相机固定在前景屋顶后上方，目标屋顶、远景楼群与街谷形成纵深。大型楼体不加入阴影贴图，避免移动 GPU 上出现整块不稳定阴影；包裹、动物和屋顶设施保留动态阴影。
+Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`、`createPackage()`、`createTarget()`、`createWindStreaks()` 和 `addClouds()` 生成。`createLevelScene()` 为 6 关预建箱堆、晾衣架、花园盆栽、太阳能板、玻璃温室和夜间信标，切关时只显示当前主题。`updatePackageSkin()` 按关卡替换箱体 / 胶带材质并重绘标签 CanvasTexture。相机固定在前景屋顶后上方，目标屋顶、远景楼群与街谷形成纵深。大型楼体不加入阴影贴图，避免移动 GPU 上出现整块不稳定阴影；包裹、动物和屋顶设施保留动态阴影。包裹组不再包含 CircleGeometry 假阴影，画面只使用 DirectionalLight + PCFSoftShadowMap 的真实投影。
 
 输入由游戏层的 Pointer 事件统一处理。`beginAim()` 记录起点，`moveAim()` 把向上距离和横向距离转换为力度与方向，`updateAimVisuals()` 用与实际物理相同的重力和风力生成 18 个预测点，`releaseAim()` 在拖动超过 24px 后调用 `launchPackage()`。桌面端还支持 Space 蓄力、左右方向键瞄准、R 重开和 Escape 返回。
 
-主循环使用 `requestAnimationFrame`，单帧 `dt` 最大截断到 33ms。`updatePackage()` 叠加重力与当前关卡侧风、更新位移和旋转、检测动物与目标屋顶、处理最多 2 次弹跳，并在首次接触 1,100ms 后结算。`updateAmbient()` 按关卡的振幅和周期驱动路线 4 / 6 的目标横向往返；`updateAnimals()` 驱动最多 2 只动物及其巡逻路径。`checkAnimalCollision()` 每次投掷最多触发一次，调用纯函数 `animalImpulse()` 修改速度、旋转、台词、浮层、粒子和对应音效，但不直接扣机会。落点与目标中心的平面距离会乘当前关卡 `targetScale`，再决定 100 / 60 / 25 分；低于世界高度 -7 判定坠楼。前三次中心连续命中追加 100 分，成功投递维护 combo，失误清零。
+主循环使用 `requestAnimationFrame`，单帧 `dt` 最大截断到 33ms。`updatePackage()` 叠加重力与当前关卡侧风、更新位移和旋转、检测动物与目标屋顶，并把落地分成撞击、弹跳、接地滑动和静止结算。`roofImpact()` 使用首跳 0.28 / 后续 0.16 恢复系数、0.78 水平保留并把水平速度耦合到翻滚角速度；第 3 次碰撞或低速碰撞进入接地，`groundFriction()` 每秒施加 2.8 水平摩擦与 3.8 角阻尼。接地后继续移动，滑出屋顶边界会重新坠落；静止阈值或 1,800ms 上限到达才结算最终位置。
+
+`updateAmbient()` 按关卡的振幅和周期驱动路线 4 / 6 的目标横向往返；`updateAnimals()` 驱动最多 2 只动物、巡逻路径、四足交替步态、尾巴摆动、鸡翅扑动、身体起伏与 450ms 跳扑反应。`animalShouldInterfere()` 使用水平距离 + 0.05–2.10 高度范围的圆柱判定，替代旧版小型三维球；`checkAnimalCollision()` 每次投掷最多触发一次，调用 `animalImpulse()` 显著修改速度、旋转、台词、浮层、粒子和对应音效，但不直接扣机会。落点与目标中心的平面距离会乘当前关卡 `targetScale`，再决定 100 / 60 / 25 分；低于世界高度 -7 判定坠楼。前三次中心连续命中追加 100 分，成功投递维护 combo，失误清零。
 
 关卡结算由 `hasPassedLevel()` 同时检查送达数、中心命中数和最低分。失败不写进度，主按钮只重试当前路线；成功时把关卡编号加入 `completedLevels`，并最多解锁下一关。路线地图通过原生 DOM 生成 6 张卡片，锁定卡禁用；列表使用 Click 与 `touch-action: pan-y`，避免移动端滚动时误选。
 
@@ -54,7 +57,8 @@ Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`
 - 调投掷手感：修改 `src/main.js` 的 `GRAVITY`、`velocityFromAim()`、横向速度映射、风力范围和 `LANDING_Y`。
 - 调统一缓冲时间：修改 `src/main.js` 的 `GRACE_MS`；关卡长度与容错统一在 `src/levels.js` 调整。
 - 调关卡长度、风力与过关目标：修改 `src/levels.js` 的 `parcels`、`maxMisses`、`windMin` / `windMax`、`targetScale`、`deliveredGoal`、`bullseyeGoal`、`scoreGoal`、`moveAmplitude` 和 `movePeriod`，并同步 `doc/requirements.md`。
-- 调箱子与动物干扰：修改 `src/levels.js` 的 `parcel` 与 `animals`；动物移动 / 碰撞参数为 `amplitude`、`period`、`radius`、`deflect`、`lift` 和 `zOffset`。改动物造型时修改 `src/animal-assets.js`，保持共享库的硬边低多边形语言。
+- 调箱子与动物干扰：修改 `src/levels.js` 的 `parcel` 与 `animals`；动物移动 / 碰撞参数为 `amplitude`、`period`、`radius`、`height`、`deflect`、`lift`、`pounce` 和 `zOffset`。改动物造型或肢体标签时修改 `src/animal-assets.js`，保持共享库的硬边低多边形语言。
+- 调落地手感：修改 `src/physics.js` 的恢复系数、水平保留、翻滚耦合、摩擦和角阻尼，以及 `src/main.js` 的 0.18 / 0.35 静止阈值和 1,800ms 结算上限。
 - 调各关屋顶布置：修改 `src/main.js` 的 `createLevelScene()`；新增视觉物件必须留在目标屋顶边缘，不能遮挡收件圆环或参与物理碰撞。
 - 调目标与计分：修改 `setTarget()` 的坐标范围、`evaluateLanding()` 的 0.85 / 1.7 半径，以及 `resolveDelivery()` 的 100 / 60 / 25 分和 combo 奖励。
 - 调弹跳：修改 `updatePackage()` 的 22% 竖直保留、62% 水平保留、最大弹跳次数与 1,100ms 结算等待。

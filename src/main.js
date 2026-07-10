@@ -2,8 +2,9 @@ import * as THREE from 'three'
 import './styles.css'
 import { createCat, createChicken, createDog } from './animal-assets.js'
 import { applyI18n, line, locale, t } from './i18n.js'
-import { LEVELS, animalImpulse, hasPassedLevel, levelMission, levelTitle, objectiveProgress } from './levels.js'
+import { LEVELS, animalImpulse, animalShouldInterfere, hasPassedLevel, levelMission, levelTitle, objectiveProgress } from './levels.js'
 import { initLeaderboard, snapshotPreRunBest, submitFinalScore } from './leaderboard.js'
+import { groundFriction, roofImpact } from './physics.js'
 import {
   playAim,
   playAnimalHit,
@@ -90,6 +91,7 @@ const state = {
   angularVelocity: new THREE.Vector3(),
   bounceCount: 0,
   firstRoofContact: 0,
+  grounded: false,
   lastTarget: new THREE.Vector3(99, 0, 99),
   keyboardPower: 0,
   keyboardAim: 0,
@@ -346,14 +348,6 @@ function createPackage() {
   label.position.set(0.18, 0.03, 0.246)
   label.userData.packagePart = 'label'
   group.add(label)
-  const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.48, 24),
-    new THREE.MeshBasicMaterial({ color: 0x27283a, transparent: true, opacity: 0.22, depthWrite: false }),
-  )
-  shadow.rotation.x = -Math.PI / 2
-  shadow.position.y = -0.64
-  shadow.userData.packageShadow = true
-  group.add(shadow)
   return group
 }
 
@@ -471,7 +465,7 @@ function createAnimalRoster() {
     const path = createPatrolPath()
     path.visible = false
     scene.add(path)
-    return { group, path, config: null, direction: 1, type }
+    return { group, path, config: null, direction: 1, type, baseScale: scale, hitAt: 0, hitDirection: 1 }
   })
 }
 
@@ -496,6 +490,7 @@ function applyLevelPresentation() {
     entry.group.visible = false
     entry.path.visible = false
     entry.config = null
+    entry.hitAt = 0
   })
   level.animals.forEach((config, index) => {
     const offset = level.id === 6 ? index + 3 : config.type === 'cat' ? 0 : config.type === 'dog' ? 1 : 2
@@ -515,8 +510,35 @@ function updateAnimals(now) {
     const config = entry.config
     const phase = (now / 1000) * (Math.PI * 2 / config.period) + (config.phase || 0)
     entry.direction = Math.cos(phase) >= 0 ? 1 : -1
-    entry.group.position.set(Math.sin(phase) * config.amplitude, ROOF_TOP + 0.08, targetGroup.position.z + config.zOffset)
+    const stride = Math.sin(phase * 4)
+    const bob = Math.abs(Math.sin(phase * 2)) * (entry.type === 'chicken' ? 0.09 : 0.04)
+    let pounceY = 0
+    let pounceTilt = 0
+    if (entry.hitAt) {
+      const progress = (now - entry.hitAt) / 450
+      if (progress < 1) {
+        const arc = Math.sin(progress * Math.PI)
+        pounceY = arc * config.pounce
+        pounceTilt = arc * entry.hitDirection * 0.2
+      } else {
+        entry.hitAt = 0
+      }
+    }
+    entry.group.position.set(Math.sin(phase) * config.amplitude, ROOF_TOP + 0.08 + bob + pounceY, targetGroup.position.z + config.zOffset)
     entry.group.rotation.y = entry.direction > 0 ? 0 : Math.PI
+    entry.group.rotation.z = stride * 0.045 + pounceTilt
+    const squash = 1 + Math.abs(stride) * 0.025
+    entry.group.scale.set(entry.baseScale / squash, entry.baseScale * squash, entry.baseScale)
+    entry.group.children.forEach((child) => {
+      if (child.userData.animalPart === 'leg') {
+        const angle = entry.type === 'chicken' ? 0.28 : 0.32
+        child.rotation.z = Math.sin(phase * 4 + child.userData.stepPhase) * angle
+      } else if (child.userData.animalPart === 'tail') {
+        child.rotation.x = Math.sin(phase * 5) * 0.25
+      } else if (child.userData.animalPart === 'wing') {
+        child.rotation.x = child.userData.wingSide * Math.sin(phase * 6) * 0.55
+      }
+    })
     entry.path.position.set(0, ROOF_TOP + 0.04, targetGroup.position.z + config.zOffset)
   })
 }
@@ -525,11 +547,13 @@ function checkAnimalCollision() {
   if (!state.flying || state.animalHitThisThrow) return
   for (const entry of animalRoster) {
     if (!entry.config || !entry.group.visible) continue
-    const center = entry.group.position.clone()
-    center.y += entry.type === 'chicken' ? 0.45 : 0.52
-    if (packageGroup.position.distanceTo(center) > entry.config.radius) continue
+    if (!animalShouldInterfere(packageGroup.position, entry.group.position, entry.config)) continue
     state.animalHitThisThrow = true
-    const nextVelocity = animalImpulse(state.velocity, entry.config, entry.direction)
+    state.grounded = false
+    const pushDirection = Math.sign(packageGroup.position.x - entry.group.position.x) || entry.direction
+    entry.hitAt = performance.now()
+    entry.hitDirection = pushDirection
+    const nextVelocity = animalImpulse(state.velocity, entry.config, pushDirection)
     state.velocity.set(nextVelocity.x, nextVelocity.y, nextVelocity.z)
     state.angularVelocity.add(new THREE.Vector3(2.4, entry.direction * 3.2, 1.8))
     playAnimalHit(entry.type)
@@ -581,6 +605,7 @@ function resetPackage() {
   state.aiming = false
   state.bounceCount = 0
   state.firstRoofContact = 0
+  state.grounded = false
   state.animalHitThisThrow = false
   hideTrajectory()
 }
@@ -935,8 +960,14 @@ function evaluateLanding() {
 
 function updatePackage(dt, now) {
   if (!state.flying) return
-  state.velocity.x += state.wind * dt
-  state.velocity.y -= GRAVITY * dt
+  if (state.grounded) {
+    const next = groundFriction(state.velocity, state.angularVelocity, dt)
+    state.velocity.set(next.velocity.x, next.velocity.y, next.velocity.z)
+    state.angularVelocity.set(next.angularVelocity.x, next.angularVelocity.y, next.angularVelocity.z)
+  } else {
+    state.velocity.x += state.wind * dt
+    state.velocity.y -= GRAVITY * dt
+  }
   packageGroup.position.addScaledVector(state.velocity, dt)
   packageGroup.rotation.x += state.angularVelocity.x * dt
   packageGroup.rotation.y += state.angularVelocity.y * dt
@@ -948,22 +979,31 @@ function updatePackage(dt, now) {
     spawnTrailParticle()
   }
 
-  const overTargetRoof = Math.abs(packageGroup.position.x) <= 4.55 && packageGroup.position.z >= -18.25 && packageGroup.position.z <= -3.75
-  if (overTargetRoof && packageGroup.position.y <= LANDING_Y && state.velocity.y < 0) {
-    packageGroup.position.y = LANDING_Y
-    state.velocity.y = Math.abs(state.velocity.y) * 0.22
-    state.velocity.x *= 0.62
-    state.velocity.z *= 0.62
-    state.angularVelocity.multiplyScalar(0.58)
-    if (!state.firstRoofContact) state.firstRoofContact = now
-    playBounce(state.bounceCount)
-    state.bounceCount += 1
+  let overTargetRoof = Math.abs(packageGroup.position.x) <= 4.55 && packageGroup.position.z >= -18.25 && packageGroup.position.z <= -3.75
+  if (state.grounded && !overTargetRoof) {
+    state.grounded = false
+    state.velocity.y = -0.25
   }
 
-  if (state.firstRoofContact) {
+  if (!state.grounded && overTargetRoof && packageGroup.position.y <= LANDING_Y && state.velocity.y < 0) {
+    const impact = roofImpact(state.velocity, state.angularVelocity, state.bounceCount, random(-0.35, 0.35))
+    packageGroup.position.y = LANDING_Y
+    state.velocity.set(impact.velocity.x, impact.velocity.y, impact.velocity.z)
+    state.angularVelocity.set(impact.angularVelocity.x, impact.angularVelocity.y, impact.angularVelocity.z)
+    if (!state.firstRoofContact) state.firstRoofContact = now
+    playBounce(state.bounceCount)
+    state.bounceCount = impact.bounceCount
+    state.grounded = impact.grounded
+  }
+
+  if (state.grounded) packageGroup.position.y = LANDING_Y
+
+  if (state.firstRoofContact && state.grounded) {
     const horizontalSpeed = Math.hypot(state.velocity.x, state.velocity.z)
-    if (now - state.firstRoofContact >= 1100 || (state.bounceCount >= 2 && horizontalSpeed < 0.9)) {
+    const angularSpeed = state.angularVelocity.length()
+    if (now - state.firstRoofContact >= 1800 || (horizontalSpeed < 0.18 && angularSpeed < 0.35)) {
       state.velocity.set(0, 0, 0)
+      state.angularVelocity.set(0, 0, 0)
       packageGroup.position.y = LANDING_Y
       evaluateLanding()
       return
@@ -974,14 +1014,6 @@ function updatePackage(dt, now) {
     resolveDelivery('miss')
   }
 
-  const shadow = packageGroup.children.find((child) => child.userData.packageShadow)
-  if (shadow) {
-    const height = Math.max(0, packageGroup.position.y - ROOF_TOP)
-    shadow.position.y = -height - 0.27
-    shadow.material.opacity = clamp(0.27 - height * 0.022, 0.04, 0.22)
-    const scale = clamp(1 + height * 0.08, 1, 1.9)
-    shadow.scale.setScalar(scale)
-  }
 }
 
 function spawnTrailParticle() {
