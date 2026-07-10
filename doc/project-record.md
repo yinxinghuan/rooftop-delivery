@@ -5,7 +5,10 @@
 - 中文名：天台速递
 - 本地目录：`/Users/yin/code/games/rooftop-delivery`
 - 创建日期：2026-07-10
-- 当前状态：本地可玩版本完成，尚未注册、建独立仓库或发布
+- 当前状态：已发布并注册，等待同事迁移工具把最新 `games.json` 入库
+- 独立仓库：`https://github.com/yinxinghuan/rooftop-delivery`
+- 游玩地址：`https://yinxinghuan.github.io/rooftop-delivery/`
+- Remix 源码包：`https://github.com/yinxinghuan/rooftop-delivery/archive/refs/heads/master.zip`
 - 游戏类型：手机竖屏 3D 弹道投掷 / 风向判断 / 精准落点
 - 永久 UUID：`3ecbe73c-4354-438b-8a30-f523370c0324`
 - 最高分键：`rooftop_delivery_best`
@@ -31,11 +34,16 @@
 - `doc/requirements.md` 六节齐全，`doc/technical.md` 四节齐全。
 - `public/poster.png` 与 `dist/poster.png` 均为 1024 × 1024。
 
-## 发布前待办
+## 上线记录
+
+1. 2026-07-10 创建独立公开仓库并推送 `master`。
+2. 启用 GitHub Pages workflow，部署运行 `29088526999` 成功。
+3. 线上 HTML 返回 `assets/index-C6r3kzyD.js`，bundle 已检出 `rooftop_delivery_best`，证明不是只完成 push。
+4. `games/games.json` 条目位于数组第一位，分类为 `action`；中心海报为 `posters/rooftop-delivery.png`。
+5. 平台列表仍需要同事重跑迁移工具，客户端才会从平台 DB 读到新条目。
+
+## 后续待办
 
 1. 邀请真实玩家测试近、中、远三档力度和强侧风命中率，调整弹道数值。
 2. 决定是否抽取为“一句话造游戏”的 3D projectile cartridge；母模板不得直接承担独立游戏发布。
-3. 创建独立仓库，确认 remote 不指向任何母模板。
-4. 把条目加入 `games/games.json`，保留现有 UUID，补齐 URL、poster 和 zipurl。
-5. 如接排行榜，按 `game-persistence` 接入分数提交、榜单、冠军入口和 `score_beat` 通知。
-6. 按 `game-publish` 完成构建、部署、中心海报同步和线上 bundle 验证。
+3. 如接排行榜，按 `game-persistence` 接入分数提交、榜单、冠军入口和 `score_beat` 通知。

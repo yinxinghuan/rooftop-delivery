@@ -6,7 +6,7 @@ Rooftop Delivery 是独立的 Vite 6 工程，使用原生 JavaScript、Three.js
 
 游戏物理使用固定参数的轻量弹道积分，不引入额外物理引擎。音效由 Web Audio API 动态合成；中英文使用项目内轻量 i18n，根据 `localStorage.game_locale` 或浏览器语言选择。最高分保存在 `localStorage.rooftop_delivery_best`。Vite 构建固定使用 `base: './'`，资源可在任意部署子路径加载。
 
-游戏永久 UUID 为 `3ecbe73c-4354-438b-8a30-f523370c0324`，写在 `index.html` 的 `<meta name="game-uuid">` 中；当前工程尚未注册到中心 `games/games.json`，发布时应保留此 UUID 不变。
+游戏永久 UUID 为 `3ecbe73c-4354-438b-8a30-f523370c0324`，写在 `index.html` 的 `<meta name="game-uuid">` 中，并已注册到中心 `games/games.json`。独立仓库为 `yinxinghuan/rooftop-delivery`，GitHub Pages 地址为 `https://yinxinghuan.github.io/rooftop-delivery/`。
 
 ## 2. 目录结构
 
