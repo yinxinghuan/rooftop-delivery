@@ -5,7 +5,7 @@
 - 中文名：天台速递
 - 本地目录：`/Users/yin/code/games/rooftop-delivery`
 - 创建日期：2026-07-10
-- 当前状态：已发布、已注册并已在平台列表可见；六关路线升级待部署
+- 当前状态：已发布、已注册并已在平台列表可见；六关路线升级已上线
 - 独立仓库：`https://github.com/yinxinghuan/rooftop-delivery`
 - 游玩地址：`https://yinxinghuan.github.io/rooftop-delivery/`
 - Remix 源码包：`https://github.com/yinxinghuan/rooftop-delivery/archive/refs/heads/master.zip`
@@ -37,7 +37,7 @@
 - 模拟榜单验证 3 行数据、长用户名省略、自身行状态和其他玩家主页点击；点击第一名正确调用 `openAigramProfile('other-1')`。
 - 多关卡自动化验证初始 6 卡 / 5 锁、第一关 4 件包裹、两次失误立即失败、“重试本关”按钮和进度不写入；预置全解锁进度后可选择第四关并正确加载 6 件与 300 分目标。
 - 六关通过判定均做边界测试：达到全部目标时通过，送达 / 中心命中 / 分数任一低 1 均失败。
-- 已实际验证开始页、1.5 秒缓冲、Pointer 拖投、弹道预测、屋顶送达计分、下一件生成和 3 次坠楼结算。
+- 已实际验证开始页、1.5 秒缓冲、Pointer 拖投、弹道预测、屋顶送达计分、下一件生成、关卡失误上限和任务结算。
 - `doc/requirements.md` 六节齐全，`doc/technical.md` 四节齐全。
 - `public/poster.png` 与 `dist/poster.png` 均为 1024 × 1024。
 
@@ -48,6 +48,7 @@
 3. 线上 HTML 返回 `assets/index-C6r3kzyD.js`，bundle 已检出 `rooftop_delivery_best`，证明不是只完成 push。
 4. `games/games.json` 条目位于数组第一位，分类为 `action`；中心海报为 `posters/rooftop-delivery.png`。
 5. 同事已重跑迁移工具，用户确认平台列表可见该游戏。
+6. 六关路线版本提交 `6490bdc`，GitHub Pages 部署运行 `29090914484` 成功；线上 bundle `index-BP_v6cAC.js` 已检出 `rooftop_delivery_progress_v1`、`SKYLINE FINALE`、`RETRY ROUTE` 和移动目标配置。
 
 ## 后续待办
 
