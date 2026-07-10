@@ -12,7 +12,15 @@ const dictionaries = {
     leaderboardKicker: 'GLOBAL ROUTE', leaderboardTitle: 'TOP COURIERS',
     openInAlterU: 'Open in AlterU to join the global route.', downloadAlterU: 'GET ALTERU',
     loadingRank: 'Loading couriers...', noScores: 'No deliveries yet. Be the first.',
-    shiftComplete: 'SHIFT COMPLETE', shiftLost: 'SHIFT ENDED EARLY',
+    shiftComplete: 'ROUTE PASSED', shiftLost: 'ROUTE FAILED', allRoutesComplete: 'ALL ROUTES COMPLETE',
+    routeMap: 'ROUTE MAP', routeLabel: 'ROUTE {n}', mission: 'MISSION', locked: 'LOCKED', cleared: 'CLEARED', current: 'CURRENT',
+    nextRoute: 'NEXT ROUTE', retryRoute: 'RETRY ROUTE', replayFinal: 'RUN THE FINAL AGAIN', missionComplete: 'MISSION COMPLETE', missionFailed: 'MISSION INCOMPLETE',
+    level1Title: 'ROOFTOP BASICS', level1Mission: 'Deliver 3 of 4 parcels',
+    level2Title: 'CROSSWIND ROW', level2Mission: 'Deliver 4 of 5 in strong wind',
+    level3Title: 'NARROW LANDING', level3Mission: 'Deliver 5 · hit 1 bullseye',
+    level4Title: 'MOVING ADDRESS', level4Mission: 'Deliver 4 · score 300',
+    level5Title: 'FRAGILE EXPRESS', level5Mission: 'Deliver 6 · hit 2 bullseyes',
+    level6Title: 'SKYLINE FINALE', level6Mission: 'Deliver 7 · 2 bullseyes · 500 pts',
     perfect: ['Doorstep perfect!', 'Dead center!', 'Express precision!'],
     deliveredLine: ['Signed and landed!', 'Right on schedule!', 'That counts!'],
     edgeLine: ['Roof is close enough!', 'Safe landing!', 'They can find it!'],
@@ -31,7 +39,15 @@ const dictionaries = {
     leaderboardKicker: '全球路线', leaderboardTitle: '顶尖快递员',
     openInAlterU: '请在 AlterU 中查看并加入全球排行榜。', downloadAlterU: '下载 ALTERU',
     loadingRank: '正在加载排行榜…', noScores: '还没有派送纪录，来拿第一名。',
-    shiftComplete: '本轮派送完成', shiftLost: '本轮提前收车',
+    shiftComplete: '路线通过', shiftLost: '路线失败', allRoutesComplete: '全部路线完成',
+    routeMap: '路线地图', routeLabel: '路线 {n}', mission: '任务', locked: '未解锁', cleared: '已通过', current: '当前路线',
+    nextRoute: '下一条路线', retryRoute: '重试本关', replayFinal: '再跑终局', missionComplete: '任务完成', missionFailed: '任务未完成',
+    level1Title: '屋顶入门', level1Mission: '4 件中成功送达 3 件',
+    level2Title: '侧风街区', level2Mission: '强风中 5 件送达 4 件',
+    level3Title: '狭窄落点', level3Mission: '送达 5 件 · 中心命中 1 次',
+    level4Title: '移动地址', level4Mission: '送达 4 件 · 得分 300',
+    level5Title: '易碎快件', level5Mission: '送达 6 件 · 中心命中 2 次',
+    level6Title: '天际终局', level6Mission: '送达 7 件 · 中心 2 次 · 500 分',
     perfect: ['正中门口！', '中心命中！', '快递员的尊严！'],
     deliveredLine: ['准时签收！', '稳稳送到！', '这单漂亮！'],
     edgeLine: ['屋顶也算送到！', '安全落地！', '收件人找得到！'],
@@ -46,7 +62,11 @@ function detectLocale() {
 }
 
 export const locale = detectLocale()
-export const t = (key) => dictionaries[locale][key] ?? dictionaries.en[key] ?? key
+export const t = (key, vars = {}) => {
+  const value = dictionaries[locale][key] ?? dictionaries.en[key] ?? key
+  if (typeof value !== 'string') return value
+  return Object.entries(vars).reduce((text, [name, replacement]) => text.replaceAll(`{${name}}`, String(replacement)), value)
+}
 export const line = (key) => {
   const entries = dictionaries[locale][key] ?? dictionaries.en[key]
   return entries[Math.floor(Math.random() * entries.length)]

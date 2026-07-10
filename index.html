@@ -18,7 +18,7 @@
       <header id="hud" class="rd-hud" aria-hidden="true">
         <div class="rd-route-tag">
           <span data-i18n="route">ROUTE</span>
-          <strong><span id="parcelValue">1</span><small>/8</small></strong>
+          <strong><span id="parcelValue">1</span><small>/<span id="parcelTotal">4</span></small></strong>
         </div>
         <div class="rd-score-block">
           <span data-i18n="score">SCORE</span>
@@ -29,6 +29,8 @@
           <div id="missDots" class="rd-miss-dots" aria-label="3 parcels remaining"><i></i><i></i><i></i></div>
         </div>
       </header>
+
+      <div id="objectiveBadge" class="rd-objective" aria-hidden="true"></div>
 
       <aside id="windBadge" class="rd-wind" aria-hidden="true">
         <span class="rd-wind__eyebrow" data-i18n="crosswind">CROSSWIND</span>
@@ -63,6 +65,11 @@
       <main id="startScreen" class="rd-screen rd-start is-active">
         <section class="rd-start__copy">
           <h1><span>ROOFTOP</span><em>DELIVERY</em></h1>
+          <button id="routeMapButton" class="rd-level-brief" type="button">
+            <span id="startRouteLabel">ROUTE 1</span>
+            <strong id="startRouteTitle">ROOFTOP BASICS</strong>
+            <small id="startRouteMission">Deliver 3 of 4 parcels</small>
+          </button>
         </section>
         <div class="rd-start-guide" aria-hidden="true">
           <span class="rd-start-guide__trail"><i></i></span>
@@ -78,9 +85,11 @@
       <main id="endScreen" class="rd-screen rd-end" aria-hidden="true">
         <section class="rd-receipt">
           <p id="resultKicker" class="rd-kicker">SHIFT COMPLETE</p>
+          <p id="resultRoute" class="rd-receipt__route">ROUTE 1 · ROOFTOP BASICS</p>
           <div id="recordStamp" class="rd-record-stamp" data-i18n="newRecord">NEW ROUTE RECORD</div>
           <h2 id="finalScore">0000</h2>
           <span class="rd-receipt__score-label" data-i18n="routeScore">ROUTE SCORE</span>
+          <p id="resultMission" class="rd-receipt__mission"></p>
           <div class="rd-receipt__rule"></div>
           <dl>
             <div><dt data-i18n="best">BEST</dt><dd id="bestScore">0000</dd></div>
@@ -90,11 +99,21 @@
           </dl>
           <div class="rd-receipt__actions">
             <button id="againButton" class="rd-button rd-button--primary" type="button" data-i18n="again">RUN IT AGAIN</button>
+            <button id="endMapButton" class="rd-button" type="button" data-i18n="routeMap">ROUTE MAP</button>
             <button id="rankButton" class="rd-button" type="button" data-i18n="leaderboard">LEADERBOARD</button>
             <button id="homeButton" class="rd-button rd-button--quiet" type="button" data-i18n="home">BACK TO DEPOT</button>
           </div>
         </section>
       </main>
+
+      <section id="routeMapOverlay" class="rd-map" aria-hidden="true">
+        <div class="rd-map__card" role="dialog" aria-modal="true" aria-labelledby="routeMapTitle">
+          <button id="routeMapClose" class="rd-map__close" type="button" aria-label="Close">×</button>
+          <p class="rd-kicker" data-i18n="mission">MISSION</p>
+          <h2 id="routeMapTitle" class="rd-map__title" data-i18n="routeMap">ROUTE MAP</h2>
+          <div id="routeMapList" class="rd-map__list"></div>
+        </div>
+      </section>
 
       <section id="leaderboardOverlay" class="rd-lb" aria-hidden="true">
         <div class="rd-lb__card" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">

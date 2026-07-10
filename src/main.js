@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import './styles.css'
 import { applyI18n, line, locale, t } from './i18n.js'
+import { LEVELS, hasPassedLevel, levelMission, levelTitle, objectiveProgress } from './levels.js'
 import { initLeaderboard, snapshotPreRunBest, submitFinalScore } from './leaderboard.js'
 import {
   playAim,
@@ -14,6 +15,7 @@ import {
   playMiss,
   playStart,
   playThrow,
+  playUnlock,
   resumeAudio,
 } from './sounds.js'
 
@@ -25,23 +27,41 @@ applyI18n(document)
 
 const ui = {
   shell: $('#app'), stage: $('#stage'), hud: $('#hud'), windBadge: $('#windBadge'), windArrow: $('#windArrow'), windValue: $('#windValue'),
-  parcelValue: $('#parcelValue'), scoreValue: $('#scoreValue'), missDots: [...document.querySelectorAll('#missDots i')],
+  parcelValue: $('#parcelValue'), parcelTotal: $('#parcelTotal'), scoreValue: $('#scoreValue'), missDots: [...document.querySelectorAll('#missDots i')],
   aimUi: $('#aimUi'), powerFill: $('#powerFill'), graceCard: $('#graceCard'), graceCount: $('#graceCount'),
   popLayer: $('#popLayer'), bubble: $('#bubble'), comboBadge: $('#comboBadge'),
+  objectiveBadge: $('#objectiveBadge'), routeMapButton: $('#routeMapButton'), endMapButton: $('#endMapButton'),
+  startRouteLabel: $('#startRouteLabel'), startRouteTitle: $('#startRouteTitle'), startRouteMission: $('#startRouteMission'),
+  routeMapOverlay: $('#routeMapOverlay'), routeMapList: $('#routeMapList'), routeMapClose: $('#routeMapClose'),
   startScreen: $('#startScreen'), gameScreen: $('#gameScreen'), endScreen: $('#endScreen'), playHint: $('#playHint'),
   againButton: $('#againButton'), homeButton: $('#homeButton'),
   resultKicker: $('#resultKicker'), finalScore: $('#finalScore'), bestScore: $('#bestScore'), deliveredValue: $('#deliveredValue'),
   bullseyeValue: $('#bullseyeValue'), maxComboValue: $('#maxComboValue'), recordStamp: $('#recordStamp'),
+  resultRoute: $('#resultRoute'), resultMission: $('#resultMission'),
 }
 
 const BEST_KEY = 'rooftop_delivery_best'
-const TOTAL_PARCELS = 8
-const MAX_MISSES = 3
+const PROGRESS_KEY = 'rooftop_delivery_progress_v1'
 const GRACE_MS = 1500
 const GRAVITY = 10.8
 const PACKAGE_START = new THREE.Vector3(0, 1.15, 2.6)
 const ROOF_TOP = 0.5
 const LANDING_Y = 0.79
+
+function loadProgress() {
+  try {
+    const value = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}')
+    const unlocked = clamp(Number(value.unlocked) || 1, 1, LEVELS.length)
+    const cleared = Array.isArray(value.cleared)
+      ? value.cleared.filter((id) => Number.isInteger(id) && id >= 1 && id <= LEVELS.length)
+      : LEVELS.filter((level) => level.id < unlocked).map((level) => level.id)
+    return { unlocked, cleared }
+  } catch {
+    return { unlocked: 1, cleared: [] }
+  }
+}
+
+const storedProgress = loadProgress()
 
 const state = {
   isPlaying: false,
@@ -72,7 +92,14 @@ const state = {
   keyboardPower: 0,
   keyboardAim: 0,
   keyboardCharging: false,
+  selectedLevel: storedProgress.unlocked - 1,
+  unlockedLevel: storedProgress.unlocked,
+  completedLevels: new Set(storedProgress.cleared),
+  levelPassed: false,
+  targetBaseX: 0,
 }
+
+const currentLevel = () => LEVELS[state.selectedLevel]
 
 const scene = new THREE.Scene()
 scene.fog = new THREE.FogExp2(0x8d7893, 0.022)
@@ -355,6 +382,7 @@ function createWindStreaks() {
 }
 
 function setTarget() {
+  const level = currentLevel()
   let x
   let z
   let attempts = 0
@@ -363,14 +391,21 @@ function setTarget() {
     z = random(-13.5, -8.5)
     attempts += 1
   } while (attempts < 10 && Math.hypot(x - state.lastTarget.x, z - state.lastTarget.z) < 2.2)
+  state.targetBaseX = x
   targetGroup.position.set(x, ROOF_TOP + 0.015, z)
+  targetGroup.scale.setScalar(level.targetScale)
   state.lastTarget.set(x, 0, z)
 }
 
 function setWind() {
-  const calm = Math.random() < 0.2
-  state.wind = calm ? random(-0.24, 0.24) : random(-1.2, 1.2)
-  if (!calm && Math.abs(state.wind) < 0.25) state.wind = Math.sign(state.wind || 1) * 0.25
+  const level = currentLevel()
+  const calm = level.windMin === 0 && Math.random() < 0.2
+  if (calm) {
+    state.wind = random(-Math.min(0.24, level.windMax), Math.min(0.24, level.windMax))
+  } else {
+    const magnitude = random(Math.max(level.windMin, 0.25), level.windMax)
+    state.wind = (Math.random() < 0.5 ? -1 : 1) * magnitude
+  }
   ui.windValue.textContent = Math.abs(state.wind).toFixed(1)
   ui.windArrow.textContent = Math.abs(state.wind) < 0.12 ? '↔' : state.wind > 0 ? '→' : '←'
   ui.windArrow.style.transform = `scaleX(${state.wind < 0 ? -1 : 1})`
@@ -402,11 +437,76 @@ function prepareRound(delay = 0) {
     state.resolving = false
     state.ready = true
     ui.parcelValue.textContent = String(state.parcelIndex + 1)
+    updateObjective()
     ui.playHint.classList.add('is-visible')
   }, delay)
 }
 
+function saveProgress() {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify({ unlocked: state.unlockedLevel, cleared: [...state.completedLevels].sort((a, b) => a - b) }))
+}
+
+function updateLevelIntro() {
+  const level = currentLevel()
+  ui.startRouteLabel.textContent = t('routeLabel', { n: level.id })
+  ui.startRouteTitle.textContent = levelTitle(level)
+  ui.startRouteMission.textContent = levelMission(level)
+}
+
+function updateObjective() {
+  ui.objectiveBadge.textContent = objectiveProgress(currentLevel(), state)
+}
+
+function renderRouteMap() {
+  ui.routeMapList.innerHTML = ''
+  LEVELS.forEach((level, index) => {
+    const unlocked = level.id <= state.unlockedLevel
+    const cleared = state.completedLevels.has(level.id)
+    const card = document.createElement('button')
+    card.type = 'button'
+    card.className = `rd-map-row${index === state.selectedLevel ? ' is-current' : ''}${unlocked ? '' : ' is-locked'}`
+    card.disabled = !unlocked
+
+    const number = document.createElement('span')
+    number.className = 'rd-map-row__number'
+    number.textContent = String(level.id).padStart(2, '0')
+    const body = document.createElement('span')
+    body.className = 'rd-map-row__body'
+    const title = document.createElement('strong')
+    title.textContent = levelTitle(level)
+    const mission = document.createElement('small')
+    mission.textContent = levelMission(level)
+    body.append(title, mission)
+    const status = document.createElement('span')
+    status.className = 'rd-map-row__status'
+    status.textContent = !unlocked ? t('locked') : index === state.selectedLevel ? t('current') : cleared ? t('cleared') : '→'
+    card.append(number, body, status)
+    if (unlocked) {
+      card.addEventListener('click', () => {
+        state.selectedLevel = index
+        state.levelPassed = false
+        closeRouteMap()
+        goHome()
+        updateLevelIntro()
+      })
+    }
+    ui.routeMapList.appendChild(card)
+  })
+}
+
+function openRouteMap() {
+  renderRouteMap()
+  ui.routeMapOverlay.classList.add('is-visible')
+  ui.routeMapOverlay.setAttribute('aria-hidden', 'false')
+}
+
+function closeRouteMap() {
+  ui.routeMapOverlay.classList.remove('is-visible')
+  ui.routeMapOverlay.setAttribute('aria-hidden', 'true')
+}
+
 function startGame() {
+  const level = currentLevel()
   snapshotPreRunBest()
   resumeAudio()
   playStart()
@@ -422,11 +522,13 @@ function startGame() {
   state.combo = 0
   state.maxCombo = 0
   state.centerStreak = 0
+  state.levelPassed = false
   state.unlockAt = performance.now() + GRACE_MS
   updateHud()
   showScreen('game')
   ui.hud.classList.add('is-visible')
   ui.windBadge.classList.add('is-visible')
+  ui.objectiveBadge.classList.add('is-visible')
   ui.graceCard.classList.add('is-visible')
   ui.graceCount.textContent = '3'
   resetPackage()
@@ -445,7 +547,8 @@ function startGame() {
   }, 500)
 }
 
-function endGame(completed) {
+function endGame() {
+  const level = currentLevel()
   state.isPlaying = false
   state.isGameOver = true
   state.ready = false
@@ -454,18 +557,40 @@ function endGame(completed) {
   hideTrajectory()
   ui.aimUi.classList.remove('is-visible')
   ui.playHint.classList.remove('is-visible')
+  ui.hud.classList.remove('is-visible')
+  ui.windBadge.classList.remove('is-visible')
+  ui.objectiveBadge.classList.remove('is-visible')
   const previousBest = state.best
   state.best = Math.max(previousBest, state.score)
+  state.levelPassed = hasPassedLevel(level, state)
+  const unlockedBefore = state.unlockedLevel
+  if (state.levelPassed) state.completedLevels.add(level.id)
+  if (state.levelPassed && level.id < LEVELS.length) {
+    state.unlockedLevel = Math.max(state.unlockedLevel, level.id + 1)
+  }
+  if (state.levelPassed) saveProgress()
   localStorage.setItem(BEST_KEY, String(state.best))
   submitFinalScore(state.score)
-  ui.resultKicker.textContent = completed ? t('shiftComplete') : t('shiftLost')
+  ui.resultKicker.textContent = state.levelPassed
+    ? (level.id === LEVELS.length ? t('allRoutesComplete') : t('shiftComplete'))
+    : t('shiftLost')
+  ui.resultRoute.textContent = `${t('routeLabel', { n: level.id })} · ${levelTitle(level)}`
+  ui.resultMission.textContent = `${state.levelPassed ? t('missionComplete') : t('missionFailed')} · ${objectiveProgress(level, state)}`
   ui.finalScore.textContent = formatScore(state.score)
   ui.bestScore.textContent = formatScore(state.best)
-  ui.deliveredValue.textContent = `${state.delivered}/${TOTAL_PARCELS}`
+  ui.deliveredValue.textContent = `${state.delivered}/${level.parcels}`
   ui.bullseyeValue.textContent = String(state.bullseyes)
   ui.maxComboValue.textContent = String(state.maxCombo)
   ui.recordStamp.classList.toggle('is-visible', state.score > previousBest)
-  completed ? playComplete() : playFail()
+  ui.againButton.textContent = state.levelPassed
+    ? (level.id === LEVELS.length ? t('replayFinal') : t('nextRoute'))
+    : t('retryRoute')
+  if (state.levelPassed) {
+    playComplete()
+    if (state.unlockedLevel > unlockedBefore) window.setTimeout(playUnlock, 380)
+  } else {
+    playFail()
+  }
   showScreen('end')
 }
 
@@ -480,7 +605,9 @@ function goHome() {
   setWind()
   ui.hud.classList.remove('is-visible')
   ui.windBadge.classList.remove('is-visible')
+  ui.objectiveBadge.classList.remove('is-visible')
   ui.graceCard.classList.remove('is-visible')
+  updateLevelIntro()
   showScreen('start')
 }
 
@@ -626,19 +753,21 @@ function resolveDelivery(kind) {
     ui.shell.classList.add('is-shaking')
   }
   updateHud()
-  if (state.misses >= MAX_MISSES || state.parcelIndex >= TOTAL_PARCELS) {
-    resultTimer = window.setTimeout(() => endGame(state.parcelIndex >= TOTAL_PARCELS && state.misses < MAX_MISSES), 1050)
+  const level = currentLevel()
+  if (state.misses >= level.maxMisses || state.parcelIndex >= level.parcels) {
+    resultTimer = window.setTimeout(endGame, 1050)
   } else {
     prepareRound(900)
   }
 }
 
 function evaluateLanding() {
+  const targetScale = currentLevel().targetScale
   const dx = packageGroup.position.x - targetGroup.position.x
   const dz = packageGroup.position.z - targetGroup.position.z
   const distance = Math.hypot(dx, dz)
-  if (distance <= 0.85) resolveDelivery('bullseye')
-  else if (distance <= 1.7) resolveDelivery('delivered')
+  if (distance <= 0.85 * targetScale) resolveDelivery('bullseye')
+  else if (distance <= 1.7 * targetScale) resolveDelivery('delivered')
   else resolveDelivery('edge')
 }
 
@@ -743,6 +872,11 @@ function updateParticles(dt) {
 }
 
 function updateAmbient(dt, now) {
+  const level = currentLevel()
+  if (level.moveAmplitude > 0 && state.isPlaying && !state.resolving) {
+    const phase = (now / 1000) * (Math.PI * 2 / level.movePeriod)
+    targetGroup.position.x = state.targetBaseX + Math.sin(phase) * level.moveAmplitude
+  }
   targetGroup.children.forEach((child) => {
     if (child.userData.spin) child.rotation.z += child.userData.spin * dt
     if (child.userData.beacon) {
@@ -802,9 +936,15 @@ function formatScore(score) {
 }
 
 function updateHud() {
+  const level = currentLevel()
   ui.scoreValue.textContent = formatScore(state.score)
-  ui.parcelValue.textContent = String(Math.min(TOTAL_PARCELS, state.parcelIndex + 1))
-  ui.missDots.forEach((dot, index) => dot.classList.toggle('is-used', index < state.misses))
+  ui.parcelValue.textContent = String(Math.min(level.parcels, state.parcelIndex + 1))
+  ui.parcelTotal.textContent = String(level.parcels)
+  ui.missDots.forEach((dot, index) => {
+    dot.hidden = index >= level.maxMisses
+    dot.classList.toggle('is-used', index < state.misses)
+  })
+  updateObjective()
 }
 
 function resize() {
@@ -833,7 +973,23 @@ ui.startScreen.addEventListener('pointerdown', (event) => {
 ui.againButton.addEventListener('pointerdown', (event) => {
   event.preventDefault()
   playClick()
+  if (state.levelPassed && currentLevel().id < LEVELS.length) state.selectedLevel += 1
   startGame()
+})
+ui.routeMapButton.addEventListener('pointerdown', (event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  playClick()
+  openRouteMap()
+})
+ui.endMapButton.addEventListener('pointerdown', (event) => {
+  event.preventDefault()
+  playClick()
+  openRouteMap()
+})
+ui.routeMapClose.addEventListener('click', closeRouteMap)
+ui.routeMapOverlay.addEventListener('click', (event) => {
+  if (event.target === ui.routeMapOverlay) closeRouteMap()
 })
 ui.homeButton.addEventListener('pointerdown', (event) => {
   event.preventDefault()
@@ -846,6 +1002,10 @@ ui.gameScreen.addEventListener('pointerup', releaseAim)
 ui.gameScreen.addEventListener('pointercancel', releaseAim)
 
 window.addEventListener('keydown', (event) => {
+  if (event.code === 'Escape' && ui.routeMapOverlay.classList.contains('is-visible')) {
+    closeRouteMap()
+    return
+  }
   if (event.code === 'Escape' && state.isGameOver) goHome()
   if (event.code === 'KeyR' && state.isGameOver) startGame()
   if (!state.isPlaying || !state.ready) return
@@ -887,6 +1047,7 @@ setTarget()
 setWind()
 resetPackage()
 updateHud()
+updateLevelIntro()
 ui.shell.dataset.screen = 'start'
 initLeaderboard()
 requestAnimationFrame(frame)
