@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import './styles.css'
 import { applyI18n, line, locale, t } from './i18n.js'
+import { initLeaderboard, snapshotPreRunBest, submitFinalScore } from './leaderboard.js'
 import {
   playAim,
   playBounce,
@@ -28,7 +29,7 @@ const ui = {
   aimUi: $('#aimUi'), powerFill: $('#powerFill'), graceCard: $('#graceCard'), graceCount: $('#graceCount'),
   popLayer: $('#popLayer'), bubble: $('#bubble'), comboBadge: $('#comboBadge'),
   startScreen: $('#startScreen'), gameScreen: $('#gameScreen'), endScreen: $('#endScreen'), playHint: $('#playHint'),
-  startButton: $('#startButton'), againButton: $('#againButton'), homeButton: $('#homeButton'),
+  againButton: $('#againButton'), homeButton: $('#homeButton'),
   resultKicker: $('#resultKicker'), finalScore: $('#finalScore'), bestScore: $('#bestScore'), deliveredValue: $('#deliveredValue'),
   bullseyeValue: $('#bullseyeValue'), maxComboValue: $('#maxComboValue'), recordStamp: $('#recordStamp'),
 }
@@ -406,6 +407,7 @@ function prepareRound(delay = 0) {
 }
 
 function startGame() {
+  snapshotPreRunBest()
   resumeAudio()
   playStart()
   state.isPlaying = true
@@ -455,6 +457,7 @@ function endGame(completed) {
   const previousBest = state.best
   state.best = Math.max(previousBest, state.score)
   localStorage.setItem(BEST_KEY, String(state.best))
+  submitFinalScore(state.score)
   ui.resultKicker.textContent = completed ? t('shiftComplete') : t('shiftLost')
   ui.finalScore.textContent = formatScore(state.score)
   ui.bestScore.textContent = formatScore(state.best)
@@ -482,6 +485,7 @@ function goHome() {
 }
 
 function showScreen(name) {
+  ui.shell.dataset.screen = name
   const screens = { start: ui.startScreen, game: ui.gameScreen, end: ui.endScreen }
   Object.entries(screens).forEach(([key, screen]) => {
     const active = key === name
@@ -821,7 +825,7 @@ function frame(now) {
   requestAnimationFrame(frame)
 }
 
-ui.startButton.addEventListener('pointerdown', (event) => {
+ui.startScreen.addEventListener('pointerdown', (event) => {
   event.preventDefault()
   playClick()
   startGame()
@@ -883,6 +887,8 @@ setTarget()
 setWind()
 resetPackage()
 updateHud()
+ui.shell.dataset.screen = 'start'
+initLeaderboard()
 requestAnimationFrame(frame)
 
 if (locale === 'zh') document.title = '天台速递'

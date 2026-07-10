@@ -52,21 +52,23 @@
       <div id="bubble" class="rd-bubble" aria-hidden="true"></div>
       <div id="comboBadge" class="rd-combo" aria-hidden="true">x2 COMBO</div>
 
+      <button id="championPill" class="rd-champion" type="button" aria-label="Open leaderboard">
+        <span id="championAvatar" class="rd-champion__avatar" aria-hidden="true">★</span>
+        <span class="rd-champion__body">
+          <span id="championName" class="rd-champion__name" data-i18n="leaders">LEADERS</span>
+          <span id="championScore" class="rd-champion__score"></span>
+        </span>
+      </button>
+
       <main id="startScreen" class="rd-screen rd-start is-active">
         <section class="rd-start__copy">
-          <div class="rd-postmark" aria-hidden="true"><span>EXPRESS</span><b>07·10</b></div>
-          <p class="rd-kicker" data-i18n="kicker">DUSK SHIFT · AIRMAIL 08</p>
           <h1><span>ROOFTOP</span><em>DELIVERY</em></h1>
-          <p class="rd-start__lede" data-i18n="lede">Throw eight parcels across the city. Read the wind. Land on the mark.</p>
         </section>
-        <section class="rd-start__ticket">
-          <div class="rd-gesture" aria-hidden="true"><i></i><span>↑</span></div>
-          <div>
-            <strong data-i18n="dragRelease">DRAG UP · RELEASE</strong>
-            <small data-i18n="dragHint">Sideways aims. Distance sets power.</small>
-          </div>
-        </section>
-        <button id="startButton" class="rd-button rd-button--primary" type="button" data-i18n="startShift">START SHIFT</button>
+        <div class="rd-start-guide" aria-hidden="true">
+          <span class="rd-start-guide__trail"><i></i></span>
+          <span class="rd-start-guide__hand">☝</span>
+          <strong data-i18n="dragRelease">DRAG UP · RELEASE</strong>
+        </div>
       </main>
 
       <main id="gameScreen" class="rd-screen rd-game" aria-hidden="true">
@@ -88,13 +90,24 @@
           </dl>
           <div class="rd-receipt__actions">
             <button id="againButton" class="rd-button rd-button--primary" type="button" data-i18n="again">RUN IT AGAIN</button>
+            <button id="rankButton" class="rd-button" type="button" data-i18n="leaderboard">LEADERBOARD</button>
             <button id="homeButton" class="rd-button rd-button--quiet" type="button" data-i18n="home">BACK TO DEPOT</button>
           </div>
         </section>
       </main>
 
+      <section id="leaderboardOverlay" class="rd-lb" aria-hidden="true">
+        <div class="rd-lb__card" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
+          <button id="leaderboardClose" class="rd-lb__close" type="button" aria-label="Close">×</button>
+          <p class="rd-kicker" data-i18n="leaderboardKicker">GLOBAL ROUTE</p>
+          <h2 id="leaderboardTitle" class="rd-lb__title" data-i18n="leaderboardTitle">TOP COURIERS</h2>
+          <div id="leaderboardList" class="rd-lb__list"></div>
+        </div>
+      </section>
+
       <img class="rd-watermark" src="./img/aigram.svg" alt="" draggable="false" />
     </div>
+    <script src="./aigram-bridge.js"></script>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
