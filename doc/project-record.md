@@ -5,7 +5,7 @@
 - 中文名：天台速递
 - 本地目录：`/Users/yin/code/games/rooftop-delivery`
 - 创建日期：2026-07-10
-- 当前状态：已发布、已注册并已在平台列表可见；六关主题、动物干扰与大胆邮政字阶均已上线
+- 当前状态：已发布、已注册并已在平台列表可见；六关主题、动物主动干扰、真实落地物理与大胆邮政字阶均已上线
 - 独立仓库：`https://github.com/yinxinghuan/rooftop-delivery`
 - 游玩地址：`https://yinxinghuan.github.io/rooftop-delivery/`
 - Remix 源码包：`https://github.com/yinxinghuan/rooftop-delivery/archive/refs/heads/master.zip`
@@ -60,6 +60,7 @@
 6. 六关路线版本提交 `6490bdc`，GitHub Pages 部署运行 `29090914484` 成功；线上 bundle `index-BP_v6cAC.js` 已检出 `rooftop_delivery_progress_v1`、`SKYLINE FINALE`、`RETRY ROUTE` 和移动目标配置。
 7. 主题场景与动物版本提交 `581d921`，GitHub Pages 部署运行 `29091829210` 成功；线上 bundle `index-DbPdyuwa.js` 已检出猫狗巡逻、鸡碰撞台词、`ANIMAL INTERFERENCE`、温室场景和 `FRAGILE` / `FINAL / 06` 箱子皮肤。
 8. 字体版本提交 `5a3a876`，GitHub Pages 部署运行 `29092621276` 成功；线上 CSS `index-BQbljl_5.css` 已检出 display / condensed / mono 三层字体 token、Impact 展示字和 23px / 40px 关键字阶。
+9. 物理修复版本提交 `b80410e`，GitHub Pages 部署运行 `29093822693` 成功；线上 HTML 已切换至 `index-B7KsugIC.js`。该版本删除圆形假阴影，加入动物步态 / 跳扑、圆柱干扰判定、强化冲量，以及撞击—弹跳—滑动—滚动—出界再坠落的落地流程。
 
 ## 后续待办
 
