@@ -12,8 +12,8 @@ export const UPGRADES = [
 ]
 
 const CAT = { type: 'cat', amplitude: 2.15, period: 5.4, radius: 0.95, height: 2.1, deflect: 2.2, lift: 1.1, pounce: 0.55, zOffset: 0 }
-const DOG = { type: 'dog', amplitude: 2.05, period: 4.8, radius: 1.05, height: 2.1, deflect: 2.5, lift: 0.85, pounce: 0.4, zOffset: 0 }
-const HEN = { type: 'chicken', amplitude: 1.85, period: 4.2, radius: 0.9, height: 2.1, deflect: 1.8, lift: 1.4, pounce: 0.7, zOffset: 0 }
+const DOG = { type: 'dog', amplitude: 2.6, period: 7.8, radius: 0.82, height: 2.1, deflect: 2.4, lift: 0.85, pounce: 0.4, zOffset: 0 }
+const HEN = { type: 'chicken', amplitude: 2.3, period: 7.2, radius: 0.78, height: 2.1, deflect: 1.8, lift: 1.4, pounce: 0.7, zOffset: 0 }
 
 export const ROUTES = [
   {
@@ -51,7 +51,7 @@ export const ROUTES = [
   {
     id: 5, name: 'Garden Dogs', scene: 'garden',
     blurb: 'Narrower pad, one dog, and a bullseye. Land 4, center once.',
-    parcels: 6, maxMisses: 2, windMin: 0.1, windMax: 0.82, targetScale: 1.04,
+    parcels: 6, maxMisses: 3, windMin: 0.1, windMax: 0.82, targetScale: 1.04,
     deliveredGoal: 4, bullseyeGoal: 1, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
     xRange: [-2.2, 2.2], zRange: [-12.6, -8.7], animals: [{ ...DOG }],
     parcel: { box: 0x5d9b67, tape: 0xf4ead8, label: 'BIO / 05' },
@@ -66,7 +66,7 @@ export const ROUTES = [
   },
   {
     id: 7, name: 'Glasshouse', scene: 'glasshouse',
-    blurb: 'Fragile crates, a chicken, and two careful centers.',
+    blurb: 'Fragile crates and a chicken. Land 5, and center once.',
     parcels: 6, maxMisses: 2, windMin: 0.15, windMax: 0.92, targetScale: 0.98,
     deliveredGoal: 5, bullseyeGoal: 1, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
     xRange: [-2.2, 2.2], zRange: [-12.8, -8.7], animals: [{ ...HEN }],
@@ -229,6 +229,34 @@ export function clearBonus(route, jarRank) {
 
 export function emptyUpgrades() {
   return { gloves: 0, vane: 0, jar: 0, zone: 0, spare: 0, cushion: 0, steady: 0, calm: 0 }
+}
+
+export function nextMechanic(route, seen) {
+  const known = new Set(seen || [])
+  const types = new Set((route.animals || []).map((animal) => animal.type))
+  const options = []
+  if (route.moveAmplitude > 0 && route.moveAmplitude < 0.85) {
+    options.push({ id: 'creep', text: 'The pad creeps. Aim a little ahead of the mark.' })
+  }
+  if (route.moveAmplitude >= 0.85) {
+    options.push({ id: 'slide', text: 'The pad slides. Throw ahead of where it is now.' })
+  }
+  if (types.has('cat') && !types.has('dog')) {
+    options.push({ id: 'cat', text: 'A cat patrols this roof and can swat the crate.' })
+  }
+  if (types.has('dog') && !types.has('cat')) {
+    options.push({ id: 'dog', text: 'Wait for the dog to walk off the pad, then throw.' })
+  }
+  if (types.has('chicken')) {
+    options.push({ id: 'hen', text: 'Wait for the chicken to leave the pad, then throw.' })
+  }
+  if (types.has('cat') && types.has('dog')) {
+    options.push({ id: 'duo', text: 'Cat and dog share the roof. Wait for a clear gap.' })
+  }
+  if (route.scoreGoal) {
+    options.push({ id: 'score', text: 'This route needs points. Centers pay more than the roof edge.' })
+  }
+  return options.find((option) => !known.has(option.id)) || null
 }
 
 function percentPoints(scale) {

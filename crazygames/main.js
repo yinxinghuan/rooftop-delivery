@@ -8,6 +8,7 @@ import {
   UPGRADE_ICONS,
   clearBonus,
   effectLine,
+  nextMechanic,
   passedRoute,
   progressLine,
   routeById,
@@ -37,6 +38,7 @@ let swallowSpace = false
 let pointer = null
 let lastTarget = { x: 99, z: 99 }
 let timer = 0
+let hintTimer = 0
 let bridge = { sdk: null, live: false }
 let simNow = 0
 
@@ -309,7 +311,28 @@ function beginRoute(id) {
   timer = window.setTimeout(() => {
     window.clearInterval(grace)
     prepareRound(0)
+    showMechanicHint(route)
   }, 700)
+}
+
+function showMechanicHint(route) {
+  const hint = nextMechanic(route, profile.hintsSeen)
+  const card = $('#hintCard')
+  window.clearTimeout(hintTimer)
+  if (!hint) {
+    card.hidden = true
+    return
+  }
+  $('#hintText').textContent = hint.text
+  card.hidden = false
+  profile.hintsSeen = [...profile.hintsSeen, hint.id]
+  profile = writeProfile(profile)
+  hintTimer = window.setTimeout(() => { card.hidden = true }, 7000)
+}
+
+function dismissHint() {
+  window.clearTimeout(hintTimer)
+  $('#hintCard').hidden = true
 }
 
 function showTutorialStep() {
@@ -492,6 +515,7 @@ function goTitle() {
   run.tutorialIndex = null
   world.resetPackage()
   world.setAnimals([])
+  dismissHint()
   world.setScene(routeById(profile.selected || 1).scene)
   world.setSkin(routeById(profile.selected || 1).parcel)
   audio.setRoute(1)
@@ -679,6 +703,7 @@ function nextRouteId() {
 }
 
 function launchThrow() {
+  dismissHint()
   const step = tutorialStep()
   if (!run.ready || run.flying || run.resolving || mode !== 'playing') return
   if (step && (step.action === 'charge' || step.action === 'aim' || step.action === 'enter')) {
@@ -932,6 +957,8 @@ if (new URLSearchParams(location.search).has('playtest')) {
         tutorial: run.tutorialIndex,
         tutorialAction: tutorialStep()?.action || null,
         target: { ...world.target },
+        actors: world.actors.map((actor) => ({ type: actor.type, x: actor.x, z: actor.z })),
+        hint: $('#hintCard').hidden ? '' : $('#hintText').textContent,
         tips: profile.tips,
         unlocked: profile.unlocked,
         best: profile.best,

@@ -158,9 +158,11 @@ export function createWorld(container) {
       entry.config = null
       entry.hitAt = 0
     })
-    configs.forEach((config, index) => {
-      const entry = roster[index]
+    const used = new Set()
+    configs.forEach((config) => {
+      const entry = roster.find((item) => item.type === config.type && !used.has(item))
       if (!entry) return
+      used.add(entry)
       entry.config = config
       entry.group.visible = true
       entry.path.visible = true
@@ -328,6 +330,13 @@ export function createWorld(container) {
     step,
     render,
     get target() { return { x: targetX, z: targetZ, scale: targetScale } },
+    get actors() {
+      return roster.filter((entry) => entry.config && entry.group.visible).map((entry) => ({
+        type: entry.type,
+        x: entry.group.position.x,
+        z: entry.group.position.z,
+      }))
+    },
     get flying() { return Boolean(flight) },
     pulseTarget() {
       targetGroup.children.forEach((child) => {

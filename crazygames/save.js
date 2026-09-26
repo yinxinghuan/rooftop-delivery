@@ -11,6 +11,7 @@ const DEFAULTS = {
   tips: 0,
   upgrades: emptyUpgrades(),
   tutorialSeen: false,
+  hintsSeen: [],
   selected: 1,
   audio: { muted: false, volume: 0.75 },
 }
@@ -26,6 +27,7 @@ function sanitize(raw) {
   data.cleared = Array.isArray(data.cleared) ? data.cleared.filter((id) => Number.isInteger(id) && id >= 1) : []
   data.routeBest = raw?.routeBest && typeof raw.routeBest === 'object' ? raw.routeBest : {}
   data.tutorialSeen = Boolean(data.tutorialSeen)
+  data.hintsSeen = Array.isArray(raw?.hintsSeen) ? raw.hintsSeen.filter((id) => typeof id === 'string') : []
   data.audio.muted = Boolean(data.audio.muted)
   data.audio.volume = Math.min(1, Math.max(0, Number(data.audio.volume) || 0))
   for (const key of Object.keys(data.upgrades)) {
