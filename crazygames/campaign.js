@@ -1,4 +1,4 @@
-import { tipScale } from './aim.js'
+import { calmScale, glovesScale, steadyAmount, tipScale, windScale, zoneScale } from './aim.js'
 
 export const UPGRADES = [
   { id: 'gloves', name: 'Grip Gloves', max: 3, costs: [30, 70, 130], blurb: 'A firmer release. Throws carry farther across the street.' },
@@ -26,18 +26,18 @@ export const ROUTES = [
   },
   {
     id: 2, name: 'Breeze Alley', scene: 'laundry',
-    blurb: 'A light crosswind joins the route. Land 3 parcels.',
-    parcels: 5, maxMisses: 3, windMin: 0, windMax: 0.38, targetScale: 1.38,
-    deliveredGoal: 3, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
-    xRange: [-1.5, 1.5], zRange: [-11.8, -9.2], animals: [],
+    blurb: 'A real crosswind, and the pad starts to creep. Land 3 parcels.',
+    parcels: 5, maxMisses: 3, windMin: 0.32, windMax: 0.95, targetScale: 1.0,
+    deliveredGoal: 3, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 0.62, movePeriod: 6.4,
+    xRange: [-3.45, 3.45], zRange: [-12.1, -9.0], animals: [],
     parcel: { box: 0x4f83b8, tape: 0xfff5de, label: 'AIR / 02' },
   },
   {
-    id: 3, name: 'Crosswind Row', scene: 'laundry',
-    blurb: 'The gusts pick up. Land 3 of 5 before the misses run out.',
-    parcels: 5, maxMisses: 3, windMin: 0.22, windMax: 0.58, targetScale: 1.24,
-    deliveredGoal: 3, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
-    xRange: [-1.9, 1.9], zRange: [-12.2, -8.9], animals: [],
+    id: 3, name: 'Sliding Row', scene: 'laundry',
+    blurb: 'The drop mark slides. Lead the pad and land 3 of 5.',
+    parcels: 5, maxMisses: 3, windMin: 0.42, windMax: 1.08, targetScale: 0.86,
+    deliveredGoal: 3, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 1.12, movePeriod: 4.0,
+    xRange: [-3.25, 3.25], zRange: [-12.6, -8.8], animals: [],
     parcel: { box: 0x4f83b8, tape: 0xfff5de, label: 'AIR / 03' },
   },
   {
@@ -229,4 +229,55 @@ export function clearBonus(route, jarRank) {
 
 export function emptyUpgrades() {
   return { gloves: 0, vane: 0, jar: 0, zone: 0, spare: 0, cushion: 0, steady: 0, calm: 0 }
+}
+
+function percentPoints(scale) {
+  return Math.round((scale - 1) * 100)
+}
+
+function signedPercent(points) {
+  if (points > 0) return `+${points}%`
+  if (points < 0) return `−${Math.abs(points)}%`
+  return '0%'
+}
+
+function effectPair(current, next) {
+  return next == null ? `${current} · Maxed` : `${current} to ${next}`
+}
+
+export function effectLine(id, rank, max) {
+  const next = rank >= max ? null : rank + 1
+  if (id === 'gloves') {
+    return `Reach ${effectPair(signedPercent(percentPoints(glovesScale(rank))), next == null ? null : signedPercent(percentPoints(glovesScale(next))))}`
+  }
+  if (id === 'vane') {
+    return `Wind ${effectPair(signedPercent(percentPoints(windScale(rank))), next == null ? null : signedPercent(percentPoints(windScale(next))))}`
+  }
+  if (id === 'jar') {
+    return `Tips ${effectPair(signedPercent(percentPoints(tipScale(rank))), next == null ? null : signedPercent(percentPoints(tipScale(next))))}`
+  }
+  if (id === 'zone') {
+    return `Pad ${effectPair(signedPercent(percentPoints(zoneScale(rank))), next == null ? null : signedPercent(percentPoints(zoneScale(next))))}`
+  }
+  if (id === 'spare') return `Extra parcels ${effectPair(String(rank), next == null ? null : String(next))}`
+  if (id === 'cushion') return `Extra misses ${effectPair(String(rank), next == null ? null : String(next))}`
+  if (id === 'steady') {
+    const drift = (value) => `${Math.round(steadyAmount(value) * 100)}%`
+    return `Drift ${effectPair(drift(rank), next == null ? null : drift(next))}`
+  }
+  const shove = (value) => signedPercent(percentPoints(calmScale(value)))
+  return `Shove ${effectPair(shove(rank), next == null ? null : shove(next))}`
+}
+
+const icon = (body) => `<svg viewBox="0 0 48 48" aria-hidden="true">${body}</svg>`
+
+export const UPGRADE_ICONS = {
+  gloves: icon('<path d="M18 30V18.5a2.5 2.5 0 015 0V26M23 26v-9.5a2.5 2.5 0 015 0V26M28 25.5V18a2.5 2.5 0 015 0v12.5c0 6.2-4.2 10.5-10.5 10.5h-3.2C18 41 14.5 37.2 13.6 33l-2.4-6.2a2.4 2.4 0 014.4-1.8L18 30" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'),
+  vane: icon('<path d="M24 40V14M24 16l12 4-12 4V16zM10 40h28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>'),
+  jar: icon('<path d="M18 14h12M20 14v-3h8v3M17 20h14l-1.4 16.2a4 4 0 01-4 3.6h-3.2a4 4 0 01-4-3.6L17 20z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><path d="M19 28h10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>'),
+  zone: icon('<circle cx="24" cy="24" r="12" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="24" r="6" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="24" r="2" fill="currentColor"/>'),
+  spare: icon('<path d="M10 18l14-7 14 7-14 7-14-7zM10 18v12l14 7 14-7V18M24 25v12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>'),
+  cushion: icon('<path d="M12 28c0-7 5-12 12-12s12 5 12 12-5 8-12 8-12-1-12-8z" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M16 28c1.2 3 3.4 4.5 8 4.5s6.8-1.5 8-4.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>'),
+  steady: icon('<circle cx="24" cy="24" r="10" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M24 8v6M24 34v6M8 24h6M34 24h6M24 24l6-4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'),
+  calm: icon('<circle cx="17" cy="20" r="3" fill="currentColor"/><circle cx="31" cy="20" r="3" fill="currentColor"/><circle cx="12" cy="28" r="3" fill="currentColor"/><circle cx="36" cy="28" r="3" fill="currentColor"/><circle cx="24" cy="32" r="4.2" fill="currentColor"/>'),
 }

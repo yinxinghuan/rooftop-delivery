@@ -14,48 +14,47 @@
         <div class="vignette" aria-hidden="true"></div>
 
         <header id="hud" hidden>
-          <div class="hud-card">
-            <span class="eyebrow cg-copy">Route</span>
-            <strong id="hudRoute" class="cg-copy">01 Depot Drill</strong>
+          <div class="hud-cluster hud-left">
+            <div class="hud-block">
+              <span class="eyebrow cg-copy">Route</span>
+              <strong id="hudRoute" class="cg-copy">01 Depot Drill</strong>
+              <span id="hudMission" class="hud-sub cg-copy">Landed 0/2 · 1/4</span>
+            </div>
           </div>
-          <div class="hud-card hud-card--grow">
-            <span class="eyebrow cg-copy">Mission</span>
-            <strong id="hudMission" class="cg-copy">Land 2</strong>
+          <div class="hud-cluster hud-center">
+            <div class="hud-block">
+              <span class="eyebrow cg-copy">Score</span>
+              <strong id="hudScore" class="cg-copy">0000</strong>
+            </div>
+            <div class="hud-block">
+              <span class="eyebrow cg-copy">Combo</span>
+              <strong id="hudCombo" class="cg-copy">0</strong>
+            </div>
           </div>
-          <div class="hud-card">
-            <span class="eyebrow cg-copy">Parcel</span>
-            <strong id="hudParcel" class="cg-copy">1/4</strong>
+          <div class="hud-cluster hud-right">
+            <div class="hud-block">
+              <span class="eyebrow cg-copy">Misses</span>
+              <span id="hudMisses" class="pips" aria-hidden="true"></span>
+            </div>
+            <div class="hud-block">
+              <span class="eyebrow cg-copy">Tips</span>
+              <strong id="hudTips" class="cg-copy">0</strong>
+            </div>
+            <div class="hud-block hud-wind">
+              <span class="eyebrow cg-copy">Wind</span>
+              <span class="wind-read">
+                <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <strong id="hudWind" class="cg-copy">0.0</strong>
+              </span>
+            </div>
+            <button id="btnPause" class="icon-btn" type="button" aria-label="Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z" fill="currentColor"/></svg>
+            </button>
+            <button id="muteHud" class="icon-btn mute-btn" type="button" aria-label="Mute">
+              <svg class="icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3l4-3v10l-4-3H4zM16 9a4 4 0 010 6M18 7a7 7 0 010 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
+              <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 10h3l4-3v10l-4-3H4zM16 10l5 5M21 10l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
+            </button>
           </div>
-          <div class="hud-card">
-            <span class="eyebrow cg-copy">Misses</span>
-            <span id="hudMisses" class="pips" aria-hidden="true"></span>
-          </div>
-          <div class="hud-card">
-            <span class="eyebrow cg-copy">Score</span>
-            <strong id="hudScore" class="cg-copy">0000</strong>
-          </div>
-          <div class="hud-card">
-            <span class="eyebrow cg-copy">Combo</span>
-            <strong id="hudCombo" class="cg-copy">0</strong>
-          </div>
-          <div class="hud-card">
-            <span class="eyebrow cg-copy">Tips</span>
-            <strong id="hudTips" class="cg-copy">0</strong>
-          </div>
-          <div class="hud-card hud-wind">
-            <span class="eyebrow cg-copy">Crosswind</span>
-            <span class="wind-read">
-              <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <strong id="hudWind" class="cg-copy">0.0</strong>
-            </span>
-          </div>
-          <button id="btnPause" class="icon-btn" type="button" aria-label="Pause">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z" fill="currentColor"/></svg>
-          </button>
-          <button id="muteHud" class="icon-btn mute-btn" type="button" aria-label="Mute">
-            <svg class="icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3l4-3v10l-4-3H4zM16 9a4 4 0 010 6M18 7a7 7 0 010 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-            <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 10h3l4-3v10l-4-3H4zM16 10l5 5M21 10l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-          </button>
         </header>
 
         <div id="graceChip" class="grace" hidden>
@@ -79,7 +78,7 @@
           <p id="tutorBody" class="cg-copy">Press Enter to pick up the first crate.</p>
           <div class="tutor-actions">
             <button id="btnTutorialNext" class="btn btn-primary" type="button"><span class="cg-copy">Continue</span></button>
-            <button id="btnTutorialSkip" class="btn btn-quiet" type="button"><span class="cg-copy">Skip training</span></button>
+            <button id="btnTutorialSkip" class="btn" type="button"><span class="cg-copy">Skip training</span></button>
           </div>
         </section>
 
@@ -105,8 +104,8 @@
             </div>
             <div class="audio-row">
               <button id="muteTitle" class="icon-btn mute-btn" type="button" aria-label="Mute">
-                <svg class="icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3l4-3v10l-4-3H4zM16 9a4 4 0 010 6M18 7a7 7 0 010 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 10h3l4-3v10l-4-3H4zM16 10l5 5M21 10l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                <svg class="icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3l4-3v10l-4-3H4zM16 9a4 4 0 010 6M18 7a7 7 0 010 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
+                <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 10h3l4-3v10l-4-3H4zM16 10l5 5M21 10l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
               </button>
               <label class="volume"><span class="cg-copy">Volume</span><input id="volumeTitle" type="range" min="0" max="100" value="75" aria-label="Volume" /></label>
             </div>
@@ -123,11 +122,11 @@
           <aside class="keystrip">
             <p class="eyebrow cg-copy">Desktop controls</p>
             <ul>
-              <li><kbd>Space</kbd><span class="cg-copy">Charge and throw</span></li>
-              <li><kbd>A D</kbd><span class="cg-copy">Aim sideways</span></li>
-              <li><kbd>W S</kbd><span class="cg-copy">More or less power</span></li>
-              <li><kbd>P</kbd><span class="cg-copy">Pause</span></li>
-              <li><kbd>M</kbd><span class="cg-copy">Mute</span></li>
+              <li><kbd class="cg-copy">Space</kbd><span class="cg-copy">Charge and throw</span></li>
+              <li><kbd class="cg-copy">A D</kbd><span class="cg-copy">Aim sideways</span></li>
+              <li><kbd class="cg-copy">W S</kbd><span class="cg-copy">More or less power</span></li>
+              <li><kbd class="cg-copy">P</kbd><span class="cg-copy">Pause</span></li>
+              <li><kbd class="cg-copy">M</kbd><span class="cg-copy">Mute</span></li>
               <li><span class="cg-copy">Mouse drag still throws</span></li>
             </ul>
           </aside>
@@ -145,28 +144,35 @@
               <button id="btnPauseTitle" class="btn btn-quiet" type="button"><span class="cg-copy">Back to depot</span></button>
             </div>
             <label class="volume"><span class="cg-copy">Volume</span><input id="volumePause" type="range" min="0" max="100" value="75" aria-label="Volume" /></label>
-            <p class="credits cg-copy">Music: City Loop by wipics, CC0. Fanfare: Victory by celestialghost8, CC0. Sting: Game Over Trumpet by 0new4y, CC0. Effects: Kenney, CC0.</p>
+            <p class="credits cg-copy">Music: City Loop by wipics, CC0, and Calm Track by pmiller, CC0. Fanfare: Victory by celestialghost8, CC0. Sting: Game Over Trumpet by 0new4y, CC0. Effects: Kenney, CC0.</p>
           </article>
         </section>
 
         <section id="resultScreen" class="overlay" hidden>
           <article class="panel result-panel">
             <p id="resultKicker" class="eyebrow cg-copy">Route 01</p>
-            <h2 id="resultTitle" class="cg-copy">Route cleared</h2>
-            <p id="resultStamp" class="stamp cg-copy" hidden>New best</p>
+            <div class="result-head">
+              <h2 id="resultTitle" class="cg-copy">Route cleared</h2>
+              <p id="resultStamp" class="stamp cg-copy" hidden>New best</p>
+            </div>
+            <div id="resultStars" class="stars" role="img" aria-label="1 of 3 stars"></div>
             <p id="resultScore" class="score cg-copy">0000</p>
+            <div class="reward-row">
+              <p id="resultTipsPill" class="pill cg-copy">+0 tips</p>
+              <p id="resultUnlock" class="unlock cg-copy">Clear the mission to unlock the next route</p>
+            </div>
             <p id="resultMission" class="cg-copy">Mission complete</p>
             <dl class="stats">
               <div><dt class="cg-copy">Best</dt><dd id="resultBest" class="cg-copy">0000</dd></div>
               <div><dt class="cg-copy">Landed</dt><dd id="resultLanded" class="cg-copy">0/4</dd></div>
               <div><dt class="cg-copy">Bullseyes</dt><dd id="resultBull" class="cg-copy">0</dd></div>
               <div><dt class="cg-copy">Combo</dt><dd id="resultCombo" class="cg-copy">0</dd></div>
-              <div><dt class="cg-copy">Tips earned</dt><dd id="resultTips" class="cg-copy">0</dd></div>
+              <div><dt class="cg-copy">Tips</dt><dd id="resultTips" class="cg-copy">0</dd></div>
               <div><dt class="cg-copy">Wallet</dt><dd id="resultWallet" class="cg-copy">0</dd></div>
             </dl>
             <div class="btn-row">
-              <button id="btnResultPrimary" class="btn btn-primary" type="button"><span class="cg-copy">Open depot</span></button>
-              <button id="btnResultNext" class="btn" type="button"><span class="cg-copy">Next route</span></button>
+              <button id="btnResultNext" class="btn btn-primary" type="button"><span class="cg-copy">Next route</span></button>
+              <button id="btnResultPrimary" class="btn" type="button"><span class="cg-copy">Open depot</span></button>
               <button id="btnResultRetry" class="btn" type="button"><span class="cg-copy">Retry route</span></button>
               <button id="btnResultTitle" class="btn btn-quiet" type="button"><span class="cg-copy">Back to depot</span></button>
             </div>
@@ -180,7 +186,10 @@
                 <p class="eyebrow cg-copy">Depot</p>
                 <h2 class="cg-copy">Upgrades</h2>
               </div>
-              <p class="wallet"><span class="eyebrow cg-copy">Tips</span><strong id="shopTips" class="cg-copy">0</strong></p>
+              <p class="wallet">
+                <span class="eyebrow cg-copy">Tips wallet</span>
+                <strong id="shopTips" class="cg-copy">0</strong>
+              </p>
             </header>
             <div id="shopGrid" class="shop-grid"></div>
             <div class="btn-row">

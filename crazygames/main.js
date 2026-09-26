@@ -5,8 +5,9 @@ import {
   ROUTES,
   TUTORIAL,
   UPGRADES,
+  UPGRADE_ICONS,
   clearBonus,
-  missionLine,
+  effectLine,
   passedRoute,
   progressLine,
   routeById,
@@ -65,6 +66,8 @@ function resetRun(routeId) {
     tutorialReplay: false,
     tutorialNote: '',
     targetScale: 1,
+    animalHits: 0,
+    lastAnimal: '',
   }
 }
 
@@ -166,9 +169,9 @@ function pop(text, miss) {
 function paintHud() {
   const step = tutorialStep()
   const route = liveRoute()
+  const parcel = `${Math.min(route.parcels, run.parcelIndex + 1)}/${route.parcels}`
   $('#hudRoute').textContent = step ? 'Training' : `${String(route.id).padStart(2, '0')} ${route.name}`
-  $('#hudMission').textContent = step ? step.title : progressLine(route, run)
-  $('#hudParcel').textContent = step ? 'Practice' : `${Math.min(route.parcels, run.parcelIndex + 1)}/${route.parcels}`
+  $('#hudMission').textContent = step ? step.title : `${progressLine(route, run)} · ${parcel}`
   $('#hudScore').textContent = pad(run.score)
   $('#hudCombo').textContent = String(run.combo)
   $('#hudTips').textContent = String(profile.tips)
@@ -202,12 +205,19 @@ function paintTitle() {
     if (id > ROUTES.length + 4 && id > profile.unlocked) break
     const button = document.createElement('button')
     button.type = 'button'
-    button.className = id === profile.selected ? 'is-selected' : ''
-    button.disabled = id > profile.unlocked
-    const label = document.createElement('span')
-    label.className = 'cg-copy'
-    label.textContent = String(id).padStart(2, '0')
-    button.appendChild(label)
+    const locked = id > profile.unlocked
+    button.className = locked ? 'is-locked' : id === profile.selected ? 'is-selected' : ''
+    button.disabled = locked
+    const number = String(id).padStart(2, '0')
+    if (locked) {
+      button.innerHTML = `<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="11" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><span class="cg-copy">${number}</span>`
+      button.setAttribute('aria-label', `Route ${number} locked`)
+    } else {
+      const label = document.createElement('span')
+      label.className = 'cg-copy'
+      label.textContent = number
+      button.appendChild(label)
+    }
     button.addEventListener('click', () => {
       if (id > profile.unlocked) return
       profile.selected = id
@@ -282,6 +292,7 @@ function beginRoute(id) {
   profile.selected = id
   profile = writeProfile(profile)
   const route = liveRoute()
+  audio.setRoute(route.id)
   presentRoute(route)
   world.resetPackage()
   setMode('playing')
@@ -387,6 +398,8 @@ function openShop(back) {
   setMode('shop')
 }
 
+const SHOP_TONES = ['tone-coral', 'tone-gold', 'tone-teal', 'tone-paper']
+
 function renderShop() {
   $('#shopTips').textContent = String(profile.tips)
   const next = shopBack === 'result-pass'
@@ -394,35 +407,61 @@ function renderShop() {
   $('#btnShopNext').querySelector('.cg-copy').textContent = next ? 'Start next route' : 'Retry route'
   const grid = $('#shopGrid')
   grid.innerHTML = ''
-  UPGRADES.forEach((spec) => {
+  UPGRADES.forEach((spec, index) => {
     const rank = profile.upgrades[spec.id] || 0
+    const maxed = rank >= spec.max
+    const cost = maxed ? 0 : spec.costs[rank]
+    const affordable = !maxed && profile.tips >= cost
     const card = document.createElement('article')
-    card.className = 'upgrade'
+    card.className = `upgrade ${SHOP_TONES[index % SHOP_TONES.length]} ${maxed ? 'is-max' : affordable ? 'is-ready' : 'is-poor'}`
+    const top = document.createElement('div')
+    top.className = 'upgrade-top'
+    const icon = document.createElement('div')
+    icon.className = 'upgrade-icon'
+    icon.innerHTML = UPGRADE_ICONS[spec.id] || ''
+    const heading = document.createElement('div')
     const title = document.createElement('h3')
     title.className = 'cg-copy'
     title.textContent = spec.name
+    const pips = document.createElement('div')
+    pips.className = 'rank-pips'
+    pips.setAttribute('aria-label', `Rank ${rank} of ${spec.max}`)
+    for (let mark = 0; mark < spec.max; mark += 1) {
+      const pip = document.createElement('i')
+      if (mark < rank) pip.className = 'is-on'
+      pips.appendChild(pip)
+    }
+    heading.append(title, pips)
+    top.append(icon, heading)
+    const effect = document.createElement('p')
+    effect.className = 'effect cg-copy'
+    effect.textContent = effectLine(spec.id, rank, spec.max)
     const blurb = document.createElement('p')
-    blurb.className = 'cg-copy'
+    blurb.className = 'blurb cg-copy'
     blurb.textContent = spec.blurb
-    const rankLine = document.createElement('p')
-    rankLine.className = 'rank cg-copy'
-    rankLine.textContent = `Rank ${rank}/${spec.max}`
+    const buyRow = document.createElement('div')
+    buyRow.className = 'upgrade-buy'
+    const price = document.createElement('span')
+    price.className = 'price-pill cg-copy'
+    price.textContent = maxed ? 'Maxed' : `${cost} tips`
     const button = document.createElement('button')
     button.type = 'button'
     button.className = 'btn'
     const label = document.createElement('span')
     label.className = 'cg-copy'
-    if (rank >= spec.max) {
+    if (maxed) {
       label.textContent = 'Maxed'
       button.disabled = true
-    } else {
-      const cost = spec.costs[rank]
-      label.textContent = profile.tips >= cost ? `Buy · ${cost} tips` : `Need ${cost} tips`
-      button.disabled = profile.tips < cost
+    } else if (affordable) {
+      label.textContent = 'Buy'
       button.addEventListener('click', () => buyUpgrade(spec.id))
+    } else {
+      label.textContent = 'Need tips'
+      button.disabled = true
     }
     button.appendChild(label)
-    card.append(title, blurb, rankLine, button)
+    buyRow.append(price, button)
+    card.append(top, effect, blurb, buyRow)
     grid.appendChild(card)
   })
 }
@@ -455,6 +494,7 @@ function goTitle() {
   world.setAnimals([])
   world.setScene(routeById(profile.selected || 1).scene)
   world.setSkin(routeById(profile.selected || 1).parcel)
+  audio.setRoute(1)
   setMode('title')
   paintTitle()
 }
@@ -549,10 +589,43 @@ function resolveTutorial(kind) {
   window.setTimeout(showTutorialStep, 650)
 }
 
+function starCount(route) {
+  const rate = route.parcels ? run.bullseyes / route.parcels : 0
+  if (rate >= 0.6) return 3
+  if (rate >= 0.3) return 2
+  return 1
+}
+
+function paintStars(count) {
+  const node = $('#resultStars')
+  const star = (on) => `<svg class="star${on ? ' is-on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.4l2.55 5.4 5.95.8-4.35 4.1 1.1 5.9L12 15.8 6.75 18.6l1.1-5.9L3.5 8.6l5.95-.8z"/></svg>`
+  node.innerHTML = [1, 2, 3].map((index) => star(index <= count)).join('')
+  node.setAttribute('aria-label', `${count} of 3 stars`)
+}
+
+let scoreFrame = 0
+function animateScore(value) {
+  const node = $('#resultScore')
+  window.cancelAnimationFrame(scoreFrame)
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    node.textContent = pad(value)
+    return
+  }
+  const started = performance.now()
+  const step = (now) => {
+    const t = Math.min(1, (now - started) / 700)
+    node.textContent = pad(value * (1 - (1 - t) ** 3))
+    if (t < 1) scoreFrame = window.requestAnimationFrame(step)
+  }
+  node.textContent = pad(0)
+  scoreFrame = window.requestAnimationFrame(step)
+}
+
 function finishRoute() {
   const route = liveRoute()
   const previousBest = profile.best
   const previousRoute = Number(profile.routeBest[route.id] || 0)
+  const alreadyOpen = profile.unlocked > route.id
   run.passed = passedRoute(route, run)
   if (run.passed) {
     if (!profile.cleared.includes(route.id)) profile.cleared.push(route.id)
@@ -570,10 +643,21 @@ function finishRoute() {
   profile.routeBest[route.id] = Math.max(previousRoute, run.score)
   profile = writeProfile(profile)
   const record = run.score > previousBest || run.score > previousRoute
+  const stars = starCount(route)
   $('#resultKicker').textContent = `Route ${String(route.id).padStart(2, '0')} · ${route.name}`
   $('#resultTitle').textContent = run.passed ? 'Route cleared' : 'Route failed'
   $('#resultStamp').hidden = !record
-  $('#resultScore').textContent = pad(run.score)
+  paintStars(stars)
+  animateScore(run.score)
+  $('#resultTipsPill').textContent = `+${run.tipsEarned} tips`
+  if (run.passed && !alreadyOpen) {
+    const next = routeById(route.id + 1)
+    $('#resultUnlock').textContent = `Unlocked route ${String(next.id).padStart(2, '0')} · ${next.name}`
+  } else if (run.passed) {
+    $('#resultUnlock').textContent = 'Tips saved in the depot wallet'
+  } else {
+    $('#resultUnlock').textContent = 'Clear the mission to unlock the next route'
+  }
   $('#resultMission').textContent = `${run.passed ? 'Mission complete' : 'Mission incomplete'} · ${progressLine(route, run)}`
   $('#resultBest').textContent = pad(profile.best)
   $('#resultLanded').textContent = `${run.delivered}/${route.parcels}`
@@ -581,9 +665,11 @@ function finishRoute() {
   $('#resultCombo').textContent = String(run.maxCombo)
   $('#resultTips').textContent = String(run.tipsEarned)
   $('#resultWallet').textContent = String(profile.tips)
-  $('#btnResultPrimary').querySelector('.cg-copy').textContent = run.passed ? 'Open depot' : 'Retry route'
   $('#btnResultNext').hidden = !run.passed
-  $('#btnResultNext').querySelector('.cg-copy').textContent = 'Next route'
+  $('#btnResultNext').classList.toggle('btn-primary', run.passed)
+  $('#btnResultPrimary').hidden = !run.passed
+  $('#btnResultPrimary').querySelector('.cg-copy').textContent = 'Open depot'
+  $('#btnResultRetry').classList.toggle('btn-primary', !run.passed)
   run.ready = false
   setMode('result')
 }
@@ -666,7 +752,7 @@ function onKeyDown(event) {
     if (mode === 'title') startFromTitle()
     else if (mode === 'paused') resumeGame()
     else if (mode === 'result') {
-      if (run.passed) openShop('result-pass')
+      if (run.passed) beginRoute(nextRouteId())
       else beginRoute(run.routeId)
     } else if (mode === 'shop') {
       if (!$('#btnShopNext').hidden) {
@@ -790,6 +876,8 @@ function tick(now) {
   const event = world.step(mode === 'paused' ? 0 : dt, simNow, run.wind, profile.upgrades.calm)
   if (event.bounced) audio.play('bounce', 0.35)
   if (event.animal) {
+    run.animalHits += 1
+    run.lastAnimal = event.animal
     const line = event.animal === 'dog' ? 'The dog bumped it' : event.animal === 'chicken' ? 'Chicken crossing' : 'The cat swatted it'
     pop(line, true)
     audio.play('hit', 0.6)
@@ -835,6 +923,10 @@ if (new URLSearchParams(location.search).has('playtest')) {
         goal: run.tutorialIndex === null ? liveRoute().deliveredGoal : 0,
         passed: run.passed,
         wind: run.wind,
+        moving: run.tutorialIndex === null && liveRoute().moveAmplitude > 0,
+        animals: run.tutorialIndex === null ? (liveRoute().animals || []).map((animal) => animal.type) : [],
+        animalHits: run.animalHits,
+        lastAnimal: run.lastAnimal,
         aim: run.aimDx,
         charge: run.aimDy,
         tutorial: run.tutorialIndex,
