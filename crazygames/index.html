@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rooftop Delivery</title>
+    <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" />
+    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js" async></script>
+  </head>
+  <body>
+    <div id="frame">
+      <div id="app" data-screen="title">
+        <div id="stage"></div>
+        <div class="vignette" aria-hidden="true"></div>
+
+        <header id="hud" hidden>
+          <div class="hud-card">
+            <span class="eyebrow cg-copy">Route</span>
+            <strong id="hudRoute" class="cg-copy">01 Depot Drill</strong>
+          </div>
+          <div class="hud-card hud-card--grow">
+            <span class="eyebrow cg-copy">Mission</span>
+            <strong id="hudMission" class="cg-copy">Land 2</strong>
+          </div>
+          <div class="hud-card">
+            <span class="eyebrow cg-copy">Parcel</span>
+            <strong id="hudParcel" class="cg-copy">1/4</strong>
+          </div>
+          <div class="hud-card">
+            <span class="eyebrow cg-copy">Misses</span>
+            <span id="hudMisses" class="pips" aria-hidden="true"></span>
+          </div>
+          <div class="hud-card">
+            <span class="eyebrow cg-copy">Score</span>
+            <strong id="hudScore" class="cg-copy">0000</strong>
+          </div>
+          <div class="hud-card">
+            <span class="eyebrow cg-copy">Combo</span>
+            <strong id="hudCombo" class="cg-copy">0</strong>
+          </div>
+          <div class="hud-card">
+            <span class="eyebrow cg-copy">Tips</span>
+            <strong id="hudTips" class="cg-copy">0</strong>
+          </div>
+          <div class="hud-card hud-wind">
+            <span class="eyebrow cg-copy">Crosswind</span>
+            <span class="wind-read">
+              <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h12M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <strong id="hudWind" class="cg-copy">0.0</strong>
+            </span>
+          </div>
+          <button id="btnPause" class="icon-btn" type="button" aria-label="Pause">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z" fill="currentColor"/></svg>
+          </button>
+          <button id="muteHud" class="icon-btn mute-btn" type="button" aria-label="Mute">
+            <svg class="icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3l4-3v10l-4-3H4zM16 9a4 4 0 010 6M18 7a7 7 0 010 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 10h3l4-3v10l-4-3H4zM16 10l5 5M21 10l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          </button>
+        </header>
+
+        <div id="graceChip" class="grace" hidden>
+          <span class="cg-copy">Read the wind</span>
+          <b id="graceCount" class="cg-copy">1</b>
+        </div>
+
+        <div id="floatLayer" aria-hidden="true"></div>
+
+        <footer id="powerDock" hidden>
+          <div class="power">
+            <div class="power-bar" aria-hidden="true"><i id="powerFill"></i><i class="power-notch"></i></div>
+            <span id="powerLabel" class="cg-copy">Throw power</span>
+          </div>
+          <p id="controlHint" class="cg-copy">Hold Space to throw. A and D aim. P pauses. M mutes.</p>
+        </footer>
+
+        <section id="tutorialCard" class="tutor" hidden>
+          <p id="tutorKicker" class="eyebrow cg-copy">Step 1</p>
+          <h2 id="tutorTitle" class="cg-copy">Welcome to the dusk shift</h2>
+          <p id="tutorBody" class="cg-copy">Press Enter to pick up the first crate.</p>
+          <div class="tutor-actions">
+            <button id="btnTutorialNext" class="btn btn-primary" type="button"><span class="cg-copy">Continue</span></button>
+            <button id="btnTutorialSkip" class="btn btn-quiet" type="button"><span class="cg-copy">Skip training</span></button>
+          </div>
+        </section>
+
+        <section id="titleScreen" class="overlay is-on">
+          <article class="panel title-panel">
+            <p class="eyebrow cg-copy">Dusk airmail</p>
+            <h1><span class="cg-copy">ROOFTOP</span><em class="cg-copy">DELIVERY</em></h1>
+            <p class="lede cg-copy">Read the wind. Land the crate. Ten city routes, then night contracts.</p>
+            <div class="route-now">
+              <span id="titleRoute" class="cg-copy">Route 01 · Depot Drill</span>
+              <small id="titleMission" class="cg-copy">Land 2 parcels on a quiet roof.</small>
+            </div>
+            <div id="routePicker" class="route-picker"></div>
+            <div class="btn-row">
+              <button id="btnStart" class="btn btn-primary" type="button"><span class="cg-copy">Start route</span></button>
+              <button id="btnHow" class="btn" type="button"><span class="cg-copy">How to play</span></button>
+              <button id="btnShopTitle" class="btn" type="button"><span class="cg-copy">Depot upgrades</span></button>
+            </div>
+            <div class="meta-row">
+              <span class="cg-copy" id="titleBest">Best 0000</span>
+              <span class="cg-copy" id="titleTips">Tips 0</span>
+              <span class="cg-copy" id="titleCleared">Cleared 0/10</span>
+            </div>
+            <div class="audio-row">
+              <button id="muteTitle" class="icon-btn mute-btn" type="button" aria-label="Mute">
+                <svg class="icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3l4-3v10l-4-3H4zM16 9a4 4 0 010 6M18 7a7 7 0 010 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 10h3l4-3v10l-4-3H4zM16 10l5 5M21 10l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+              </button>
+              <label class="volume"><span class="cg-copy">Volume</span><input id="volumeTitle" type="range" min="0" max="100" value="75" aria-label="Volume" /></label>
+            </div>
+          </article>
+          <aside class="brief">
+            <p class="eyebrow cg-copy">Pay table</p>
+            <ul>
+              <li><span class="cg-copy">Bullseye</span><b class="cg-copy">100 + tips</b></li>
+              <li><span class="cg-copy">On the mark</span><b class="cg-copy">60 + tips</b></li>
+              <li><span class="cg-copy">Roof landing</span><b class="cg-copy">25 + tips</b></li>
+              <li><span class="cg-copy">Combo</span><b class="cg-copy">up to +50</b></li>
+            </ul>
+          </aside>
+          <aside class="keystrip">
+            <p class="eyebrow cg-copy">Desktop controls</p>
+            <ul>
+              <li><kbd>Space</kbd><span class="cg-copy">Charge and throw</span></li>
+              <li><kbd>A D</kbd><span class="cg-copy">Aim sideways</span></li>
+              <li><kbd>W S</kbd><span class="cg-copy">More or less power</span></li>
+              <li><kbd>P</kbd><span class="cg-copy">Pause</span></li>
+              <li><kbd>M</kbd><span class="cg-copy">Mute</span></li>
+              <li><span class="cg-copy">Mouse drag still throws</span></li>
+            </ul>
+          </aside>
+        </section>
+
+        <section id="pauseScreen" class="overlay" hidden>
+          <article class="panel pause-panel">
+            <p class="eyebrow cg-copy">Paused</p>
+            <h2 class="cg-copy">Shift on hold</h2>
+            <div class="btn-col">
+              <button id="btnResume" class="btn btn-primary" type="button"><span class="cg-copy">Resume</span></button>
+              <button id="btnPauseHow" class="btn" type="button"><span class="cg-copy">Replay training</span></button>
+              <button id="btnPauseShop" class="btn" type="button"><span class="cg-copy">Depot upgrades</span></button>
+              <button id="btnPauseRetry" class="btn" type="button"><span class="cg-copy">Retry route</span></button>
+              <button id="btnPauseTitle" class="btn btn-quiet" type="button"><span class="cg-copy">Back to depot</span></button>
+            </div>
+            <label class="volume"><span class="cg-copy">Volume</span><input id="volumePause" type="range" min="0" max="100" value="75" aria-label="Volume" /></label>
+            <p class="credits cg-copy">Music: City Loop by wipics, CC0. Fanfare: Victory by celestialghost8, CC0. Sting: Game Over Trumpet by 0new4y, CC0. Effects: Kenney, CC0.</p>
+          </article>
+        </section>
+
+        <section id="resultScreen" class="overlay" hidden>
+          <article class="panel result-panel">
+            <p id="resultKicker" class="eyebrow cg-copy">Route 01</p>
+            <h2 id="resultTitle" class="cg-copy">Route cleared</h2>
+            <p id="resultStamp" class="stamp cg-copy" hidden>New best</p>
+            <p id="resultScore" class="score cg-copy">0000</p>
+            <p id="resultMission" class="cg-copy">Mission complete</p>
+            <dl class="stats">
+              <div><dt class="cg-copy">Best</dt><dd id="resultBest" class="cg-copy">0000</dd></div>
+              <div><dt class="cg-copy">Landed</dt><dd id="resultLanded" class="cg-copy">0/4</dd></div>
+              <div><dt class="cg-copy">Bullseyes</dt><dd id="resultBull" class="cg-copy">0</dd></div>
+              <div><dt class="cg-copy">Combo</dt><dd id="resultCombo" class="cg-copy">0</dd></div>
+              <div><dt class="cg-copy">Tips earned</dt><dd id="resultTips" class="cg-copy">0</dd></div>
+              <div><dt class="cg-copy">Wallet</dt><dd id="resultWallet" class="cg-copy">0</dd></div>
+            </dl>
+            <div class="btn-row">
+              <button id="btnResultPrimary" class="btn btn-primary" type="button"><span class="cg-copy">Open depot</span></button>
+              <button id="btnResultNext" class="btn" type="button"><span class="cg-copy">Next route</span></button>
+              <button id="btnResultRetry" class="btn" type="button"><span class="cg-copy">Retry route</span></button>
+              <button id="btnResultTitle" class="btn btn-quiet" type="button"><span class="cg-copy">Back to depot</span></button>
+            </div>
+          </article>
+        </section>
+
+        <section id="shopScreen" class="overlay" hidden>
+          <article class="panel shop-panel">
+            <header class="shop-head">
+              <div>
+                <p class="eyebrow cg-copy">Depot</p>
+                <h2 class="cg-copy">Upgrades</h2>
+              </div>
+              <p class="wallet"><span class="eyebrow cg-copy">Tips</span><strong id="shopTips" class="cg-copy">0</strong></p>
+            </header>
+            <div id="shopGrid" class="shop-grid"></div>
+            <div class="btn-row">
+              <button id="btnShopNext" class="btn btn-primary" type="button"><span class="cg-copy">Start next route</span></button>
+              <button id="btnShopBack" class="btn" type="button"><span class="cg-copy">Back</span></button>
+            </div>
+          </article>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
