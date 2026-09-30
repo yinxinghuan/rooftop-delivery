@@ -618,28 +618,40 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
   } else if (kind === 'neon') {
     const neonColor = index % 2 ? 0xff4fa3 : 0x35f5e4
     if (streetFace && index % 4 < 2) {
-      const labels = ['OPEN', 'POST', 'ROOF']
-      const texture = makeNeonSignTexture(labels[index % labels.length])
-      const sideSign = new THREE.Mesh(
-        new THREE.PlaneGeometry(Math.min(2.4, depth * 0.58), Math.min(0.9, height * 0.17)),
-        new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
-      )
-      sideSign.position.set(streetFace * (width / 2 + 0.095), top - 0.72, 0)
-      sideSign.rotation.y = streetFace > 0 ? Math.PI / 2 : -Math.PI / 2
-      group.add(sideSign)
-      const frontSign = new THREE.Mesh(
-        new THREE.PlaneGeometry(Math.min(2.5, width * 0.76), Math.min(0.9, height * 0.17)),
-        new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
-      )
-      frontSign.position.set(0, top - 0.72, depth / 2 + 0.095)
-      group.add(frontSign)
-    } else {
-      const signMaterial = new THREE.MeshBasicMaterial({ color: neonColor })
-      const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(1.35, width * 0.44), Math.min(2.0, height * 0.34)), signMaterial)
-      sign.position.set(width * 0.24, Math.min(top - 0.8, 1.2), depth / 2 + 0.085)
-      group.add(sign)
+      const labels = ['NIGHT', 'PARCEL', 'EXPRESS', '24H', 'AIRMAIL', 'OPEN']
+      const frontSignY = index < 2 ? top + 1.02 : top - 0.86
+      addNeonBillboard(group, {
+        text: labels[index % labels.length],
+        width: Math.min(3.45, width * 0.9),
+        height: Math.min(1.26, height * 0.2),
+        color: neonColor,
+        position: [0, frontSignY, depth / 2 + 0.13],
+        axis: 'front',
+      })
+      addNeonBillboard(group, {
+        text: labels[(index + 3) % labels.length],
+        width: Math.min(3.15, depth * 0.68),
+        height: Math.min(1.12, height * 0.18),
+        color: neonColor,
+        position: [streetFace * (width / 2 + 0.13), top - 0.8, 0],
+        axis: streetFace > 0 ? 'right' : 'left',
+      })
     }
-    if (roofDecor) sceneBox(group, [width * 0.7, 0.12, 0.12], neonColor, [0, top + 0.55, depth / 2], { emissive: neonColor, emissiveIntensity: 1.8, castShadow: false })
+    if (roofDecor) {
+      sceneBox(group, [width * 0.82, 0.075, 0.075], neonColor, [0, top + 0.51, depth / 2], { emissive: neonColor, emissiveIntensity: 3.4, castShadow: false })
+      if (streetFace) sceneBox(group, [0.075, 0.075, depth * 0.78], neonColor, [streetFace * (width / 2 + 0.04), top + 0.5, 0], { emissive: neonColor, emissiveIntensity: 3.4, castShadow: false })
+    }
+    if (streetFace) {
+      const opposite = index % 2 ? 0x35f5e4 : 0xff4fa3
+      const windowY = top - Math.min(2.15, height * 0.32)
+      for (const z of [-depth * 0.23, depth * 0.23]) {
+        sceneBox(group, [0.075, 0.68, 0.075], opposite, [streetFace * (width / 2 + 0.05), windowY, z - 0.42], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
+        sceneBox(group, [0.075, 0.68, 0.075], opposite, [streetFace * (width / 2 + 0.05), windowY, z + 0.42], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
+        sceneBox(group, [0.075, 0.075, 0.9], opposite, [streetFace * (width / 2 + 0.05), windowY + 0.34, z], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
+        sceneBox(group, [0.075, 0.075, 0.9], opposite, [streetFace * (width / 2 + 0.05), windowY - 0.34, z], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
+      }
+      sceneBox(group, [0.075, 0.08, depth * 0.82], neonColor, [streetFace * (width / 2 + 0.055), -top + 0.34, 0], { emissive: neonColor, emissiveIntensity: 3.1, castShadow: false })
+    }
   } else if (kind === 'glasshouse') {
     if (roofDecor) {
       const glass = sceneBox(group, [width * 0.64, 0.78, depth * 0.42], 0x9adcec, [0, top + 0.52, 0], { opacity: 0.38, castShadow: false })
@@ -665,6 +677,35 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
       group.add(cap)
     }
   }
+}
+
+function addNeonBillboard(group, { text, width, height, color, position, axis }) {
+  const isFront = axis === 'front'
+  const panelSize = isFront ? [width + 0.24, height + 0.24, 0.12] : [0.12, height + 0.24, width + 0.24]
+  const panel = sceneBox(group, panelSize, 0x080a1c, position, { emissive: 0x12152c, emissiveIntensity: 0.8, castShadow: false })
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({ map: makeNeonSignTexture(text), transparent: true, depthWrite: false }),
+  )
+  plane.position.set(...position)
+  if (isFront) {
+    plane.position.z += 0.071
+  } else {
+    plane.position.x += axis === 'right' ? 0.071 : -0.071
+    plane.rotation.y = axis === 'right' ? Math.PI / 2 : -Math.PI / 2
+  }
+  group.add(plane)
+
+  const tubeOptions = { emissive: color, emissiveIntensity: 4.2, castShadow: false }
+  if (isFront) {
+    for (const y of [-height / 2 - 0.08, height / 2 + 0.08]) sceneBox(group, [width + 0.22, 0.075, 0.08], color, [position[0], position[1] + y, position[2] + 0.09], tubeOptions)
+    for (const x of [-width / 2 - 0.08, width / 2 + 0.08]) sceneBox(group, [0.075, height + 0.22, 0.08], color, [position[0] + x, position[1], position[2] + 0.09], tubeOptions)
+  } else {
+    const faceX = position[0] + (axis === 'right' ? 0.09 : -0.09)
+    for (const y of [-height / 2 - 0.08, height / 2 + 0.08]) sceneBox(group, [0.08, 0.075, width + 0.22], color, [faceX, position[1] + y, position[2]], tubeOptions)
+    for (const z of [-width / 2 - 0.08, width / 2 + 0.08]) sceneBox(group, [0.08, height + 0.22, 0.075], color, [faceX, position[1], position[2] + z], tubeOptions)
+  }
+  panel.renderOrder = 1
 }
 
 function addDistrictEnvironment(group, kind) {
@@ -702,6 +743,14 @@ function addDistrictEnvironment(group, kind) {
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.01, 1.3), new THREE.MeshBasicMaterial({ color: spec.streetStripe }))
     stripe.position.set(0, -8.76, 8 - i * 4.6)
     group.add(stripe)
+  }
+  if (kind === 'neon') {
+    for (const side of [-1, 1]) {
+      for (let index = 0; index < 10; index += 1) {
+        const color = (index + (side > 0 ? 1 : 0)) % 2 ? 0xff4fa3 : 0x35f5e4
+        sceneBox(group, [0.1, 0.06, 1.75], color, [side * 3.82, -8.71, 8.5 - index * 4.15], { emissive: color, emissiveIntensity: 4.4, castShadow: false })
+      }
+    }
   }
 }
 
