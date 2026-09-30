@@ -410,9 +410,11 @@ export function createWorld(container) {
     get districtMetrics() {
       const spec = DISTRICTS[sceneName]
       return {
-        gap: Number((spec.startBack - spec.targetFront).toFixed(2)),
-        skylineCount: spec.skyline.length,
+        gap: 4,
+        streetWidth: 8,
+        skylineCount: 22,
         palette: spec.body,
+        architecture: spec.architecture,
       }
     },
     get windPropDirection() {
@@ -480,6 +482,10 @@ export function createWorld(container) {
 
 function makeBuilding(width, height, depth, color, options = {}) {
   const group = new THREE.Group()
+  const kind = options.kind || 'depot'
+  const spec = DISTRICTS[kind] || DISTRICTS.depot
+  const floors = Math.max(2, Math.floor(height / 1.25))
+  const floorHeight = height / floors
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
     new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.02 }),
@@ -487,64 +493,148 @@ function makeBuilding(width, height, depth, color, options = {}) {
   body.castShadow = false
   body.receiveShadow = false
   group.add(body)
-  const windowMaterial = new THREE.MeshBasicMaterial({ color: options.windowColor ?? 0xffd892, transparent: true, opacity: options.windowOpacity ?? 0.72 })
-  for (let row = 0; row < Math.floor(height / 1.15); row += 1) {
-    for (let col = -1; col <= 1; col += 1) {
-      if ((row + col + Math.round(width)) % 3 === 0) continue
-      const windowMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.3), windowMaterial)
-      windowMesh.position.set(col * 1.55, height / 2 - 0.8 - row * 1.05, depth / 2 + 0.011)
-      group.add(windowMesh)
+
+  const trim = options.trim ?? spec.trim
+  const trimMaterial = sceneMaterial(trim, { roughness: 0.72 })
+  for (let floor = 1; floor < floors; floor += 1) {
+    const ledge = new THREE.Mesh(new THREE.BoxGeometry(width + 0.12, 0.075, 0.16), trimMaterial)
+    ledge.position.set(0, -height / 2 + floor * floorHeight, depth / 2 + 0.045)
+    group.add(ledge)
+  }
+  for (const x of [-width / 2 + 0.11, width / 2 - 0.11]) {
+    const pilaster = new THREE.Mesh(new THREE.BoxGeometry(0.16, height + 0.12, 0.16), trimMaterial)
+    pilaster.position.set(x, 0, depth / 2 + 0.045)
+    group.add(pilaster)
+  }
+
+  const roofY = height / 2 + 0.35
+  const parapetFront = new THREE.Mesh(new THREE.BoxGeometry(width + 0.18, 0.28, 0.18), trimMaterial)
+  parapetFront.position.set(0, roofY, depth / 2 - 0.02)
+  group.add(parapetFront)
+  for (const x of [-width / 2 + 0.08, width / 2 - 0.08]) {
+    const parapetSide = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.28, depth), trimMaterial)
+    parapetSide.position.set(x, roofY, 0)
+    group.add(parapetSide)
+  }
+
+  const columns = Math.max(2, Math.min(4, Math.floor(width / 1.25)))
+  const frameMaterial = new THREE.MeshBasicMaterial({ color: spec.windowFrame })
+  const windowMaterial = new THREE.MeshBasicMaterial({ color: options.windowColor ?? spec.windows, transparent: true, opacity: options.windowOpacity ?? spec.windowOpacity })
+  for (let floor = 0; floor < floors; floor += 1) {
+    const y = -height / 2 + floorHeight * (floor + 0.55)
+    for (let column = 0; column < columns; column += 1) {
+      if ((floor + column + (options.index || 0)) % spec.windowSkip === 0) continue
+      const x = columns === 1 ? 0 : -width * 0.34 + column * (width * 0.68 / (columns - 1))
+      addWindow(group, [x, y, depth / 2 + 0.014], 0, frameMaterial, windowMaterial, kind === 'depot' ? 0.58 : 0.46, kind === 'laundry' ? 0.48 : 0.34)
     }
   }
+
+  if (options.streetFace) {
+    const faceX = options.streetFace * (width / 2 + 0.014)
+    const rotation = options.streetFace > 0 ? Math.PI / 2 : -Math.PI / 2
+    for (let floor = 0; floor < floors; floor += 1) {
+      const y = -height / 2 + floorHeight * (floor + 0.55)
+      for (const z of [-depth * 0.24, depth * 0.24]) addWindow(group, [faceX, y, z], rotation, frameMaterial, windowMaterial, 0.42, 0.32)
+    }
+  }
+
+  addArchitectureDetails(group, kind, width, height, depth, options)
   return group
+}
+
+function addWindow(group, position, rotationY, frameMaterial, paneMaterial, width, height) {
+  const frame = new THREE.Mesh(new THREE.PlaneGeometry(width + 0.14, height + 0.14), frameMaterial)
+  frame.position.set(...position)
+  frame.rotation.y = rotationY
+  group.add(frame)
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), paneMaterial)
+  pane.position.set(...position)
+  if (rotationY === 0) pane.position.z += 0.006
+  else pane.position.x += Math.sign(Math.sin(rotationY)) * 0.006
+  pane.rotation.y = rotationY
+  group.add(pane)
+}
+
+function addArchitectureDetails(group, kind, width, height, depth, options) {
+  const spec = DISTRICTS[kind]
+  const top = height / 2
+  if (kind === 'depot') {
+    const doors = Math.max(2, Math.floor(width / 2.2))
+    for (let index = 0; index < doors; index += 1) {
+      const x = doors === 1 ? 0 : -width * 0.3 + index * (width * 0.6 / (doors - 1))
+      sceneBox(group, [Math.min(1.25, width / doors - 0.18), 1.15, 0.08], 0x4c4945, [x, -height / 2 + 0.68, depth / 2 + 0.08], { castShadow: false })
+      sceneBox(group, [Math.min(1.4, width / doors), 0.14, 0.48], spec.accent, [x, -height / 2 + 1.38, depth / 2 + 0.2], { castShadow: false })
+    }
+  } else if (kind === 'laundry') {
+    for (let y = -height / 2 + 1.35; y < top - 0.6; y += 2.35) {
+      sceneBox(group, [width * 0.72, 0.1, 0.72], spec.trim, [0, y, depth / 2 + 0.32], { castShadow: false })
+      sceneBox(group, [width * 0.72, 0.42, 0.06], 0xe6f0e8, [0, y + 0.22, depth / 2 + 0.66], { opacity: 0.78, castShadow: false })
+      for (const [offset, color] of [[-0.24, 0xf05d4e], [0.02, 0xf7d58b], [0.27, 0x65c7b8]]) {
+        sceneBox(group, [0.22, 0.3, 0.025], color, [offset * width, y + 0.05, depth / 2 + 0.7], { castShadow: false })
+      }
+    }
+  } else if (kind === 'garden') {
+    sceneBox(group, [width * 0.72, 0.34, depth * 0.3], 0x9b5d3d, [0, top + 0.3, -depth * 0.14], { castShadow: false })
+    for (const x of [-width * 0.24, 0, width * 0.24]) {
+      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(Math.min(0.34, width * 0.08), 0), sceneMaterial(x === 0 ? 0x477c43 : 0x6f9c4c))
+      crown.position.set(x, top + 0.68, -depth * 0.14)
+      group.add(crown)
+    }
+    for (const x of [-width * 0.38, width * 0.38]) sceneBox(group, [0.12, 0.7, depth * 0.72], spec.trim, [x, top + 0.34, 0], { castShadow: false })
+  } else if (kind === 'neon') {
+    const signMaterial = new THREE.MeshBasicMaterial({ color: options.index % 2 ? 0xff4fa3 : 0x35f5e4 })
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(1.35, width * 0.44), Math.min(2.4, height * 0.38)), signMaterial)
+    sign.position.set(width * 0.24, Math.min(top - 0.8, 1.2), depth / 2 + 0.085)
+    group.add(sign)
+    sceneBox(group, [width * 0.7, 0.12, 0.12], options.index % 2 ? 0xff4fa3 : 0x35f5e4, [0, top + 0.55, depth / 2], { emissive: options.index % 2 ? 0xff4fa3 : 0x35f5e4, emissiveIntensity: 1.8, castShadow: false })
+  } else if (kind === 'glasshouse') {
+    const glass = sceneBox(group, [width * 0.64, 0.78, depth * 0.42], 0x9adcec, [0, top + 0.52, 0], { opacity: 0.38, castShadow: false })
+    glass.material.depthWrite = false
+    for (const x of [-width * 0.28, 0, width * 0.28]) sceneBox(group, [0.08, 1.0, depth * 0.44], spec.trim, [x, top + 0.52, 0], { castShadow: false })
+  } else if (kind === 'beacon') {
+    for (const x of [-width * 0.38, width * 0.38]) sceneBox(group, [0.22, height + 0.2, 0.18], spec.trim, [x, 0, depth / 2 + 0.08], { castShadow: false })
+    if ((options.index || 0) % 3 === 0) {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.46, 0.75, 8), sceneMaterial(spec.accent))
+      cap.position.set(0, top + 0.58, 0)
+      group.add(cap)
+    }
+  }
 }
 
 function addDistrictEnvironment(group, kind) {
   const spec = DISTRICTS[kind]
-  const start = makeBuilding(9.2, spec.startHeight, spec.startDepth, spec.startBody, {
-    windowColor: spec.windows,
-    windowOpacity: spec.windowOpacity,
-  })
-  start.position.set(0, 0.28 - spec.startHeight / 2, spec.startZ)
+  const start = makeBuilding(9.2, 8.5, 9.5, spec.startBody, { kind, index: 22, windowColor: spec.windows })
+  start.position.set(0, -4.25, 5)
   group.add(start)
-  sceneBox(group, [9.4, 0.22, spec.startDepth + 0.2], spec.startRoof, [0, 0.39, spec.startZ], { castShadow: false })
+  sceneBox(group, [9.4, 0.22, 9.7], spec.startRoof, [0, 0.38, 5], { castShadow: false })
+  for (const x of [-4.05, 4.05]) sceneBox(group, [0.1, 0.58, 7.2], spec.trim, [x, 0.77, 5])
 
-  const railColor = spec.rail
-  const railDepth = Math.max(4.8, spec.startDepth - 1.6)
-  for (const x of [-4.05, 4.05]) sceneBox(group, [0.1, 0.58, railDepth], railColor, [x, 0.77, spec.startZ])
-
-  spec.skyline.forEach(([x, z, width, height, depth, colorIndex, topOffset = 0], index) => {
-    const building = makeBuilding(width, height, depth, spec.skylinePalette[colorIndex % spec.skylinePalette.length], {
+  for (let index = 0; index < 22; index += 1) {
+    const side = index % 2 === 0 ? -1 : 1
+    const width = 2.8 + (index % 4) * 0.6
+    const depth = 3.6 + (index % 5) * 0.7
+    const rawHeight = 4 + (index % 6) * 1.4
+    const height = kind === 'depot' ? 3.8 + (index % 4) * 0.85 : kind === 'garden' ? 3.7 + (index % 3) * 1.05 : rawHeight
+    const building = makeBuilding(width, height, depth, spec.skylinePalette[index % spec.skylinePalette.length], {
+      kind,
+      index,
+      streetFace: -side,
       windowColor: spec.skylineWindows[index % spec.skylineWindows.length],
-      windowOpacity: spec.windowOpacity,
     })
-    building.position.set(x, topOffset - height / 2, z)
+    building.position.set(side * (7.4 + (index % 5) * 1.5), -height / 2 - (index % 3) * 0.4, -28 + (index % 11) * 3.1)
     group.add(building)
-    if (kind === 'garden' && index % 3 === 0) {
-      const planter = sceneBox(group, [Math.min(2.2, width * 0.62), 0.3, 0.8], 0x9c5d3e, [x, topOffset + 0.2, z + depth * 0.25])
-      planter.castShadow = false
-      for (const offset of [-0.48, 0, 0.48]) {
-        const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), sceneMaterial(index % 2 ? 0x5c944f : 0x3d7948))
-        crown.position.set(x + offset, topOffset + 0.55, z + depth * 0.25)
-        group.add(crown)
-      }
-    }
-    if (kind === 'glasshouse' && index % 2 === 0) {
-      const skylight = sceneBox(group, [Math.min(2.5, width * 0.55), 0.42, 1.2], 0x8ed9ee, [x, topOffset + 0.23, z], { opacity: 0.42, castShadow: false })
-      skylight.rotation.z = index % 4 ? 0.12 : -0.12
-    }
-  })
+  }
 
   const street = new THREE.Mesh(
-    new THREE.PlaneGeometry(spec.streetWidth, 56),
+    new THREE.PlaneGeometry(8, 52),
     new THREE.MeshStandardMaterial({ color: spec.street, roughness: 1 }),
   )
   street.rotation.x = -Math.PI / 2
   street.position.set(0, -8.8, -8)
   group.add(street)
-  for (let i = 0; i < 10; i += 1) {
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(spec.stripeWidth, 0.01, spec.stripeLength), new THREE.MeshBasicMaterial({ color: spec.streetStripe }))
-    stripe.position.set(0, -8.76, 10 - i * 4.8)
+  for (let i = 0; i < 9; i += 1) {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.01, 1.3), new THREE.MeshBasicMaterial({ color: spec.streetStripe }))
+    stripe.position.set(0, -8.76, 8 - i * 4.6)
     group.add(stripe)
   }
 }
@@ -756,105 +846,74 @@ function sceneBox(group, size, color, position, options = {}) {
 
 const DISTRICTS = {
   depot: {
-    height: 7.4, body: 0x9a7154, roof: 0xe7c88f, windows: 0xffd27a, windowOpacity: 0.62, utility: 'tank',
-    startHeight: 6.8, startDepth: 12, startZ: 4.2, startBack: -1.8, startBody: 0x776c60, startRoof: 0xd8c39c,
-    targetDepth: 13, targetZ: -9.7, targetFront: -3.2, rail: 0x5e574f,
-    street: 0x514941, streetWidth: 7.2, streetStripe: 0xe9b75d, stripeWidth: 0.11, stripeLength: 1.1,
-    skylinePalette: [0x8b7462, 0x72665c, 0xa27e5f, 0x665f59], skylineWindows: [0xffd892, 0xf4bd69],
-    skyline: [[-8,-22,5.8,4.2,7,0],[8.5,-20,6.4,5.1,8,2],[-12,-14,7.2,3.6,6,1],[13,-12,6.8,4.5,7,0],[-9,-31,8,5.4,8,3],[10,-30,7.2,6.1,7,1],[-15,-25,5.8,4.1,6,2],[16,-23,7.5,5.2,8,0]],
-    fog: 0xb08a73, fogDensity: 0.017, hemiSky: 0xffd59f, hemiGround: 0x5d5147, hemiIntensity: 2.7,
-    sun: 0xffc278, sunIntensity: 4.5, rim: 0xf3a65f, rimIntensity: 1.2, cloud: 0xffd9b5, cloudOpacity: 0.2,
+    architecture: 'warehouse', height: 8.0, body: 0x826b59, startBody: 0x6d6257, roof: 0xddc69b,
+    trim: 0x4c4945, accent: 0xd99a5f, windows: 0xffd27a, windowFrame: 0x3d3b39, windowOpacity: 0.68, windowSkip: 3, utility: 'tank',
+    street: 0x3e3d45, streetStripe: 0xf0c66f, skylinePalette: [0x74675e, 0x8c735f, 0x665f5a, 0x96785f], skylineWindows: [0xffd892, 0xe9bd72],
+    fog: 0x9b8176, fogDensity: 0.018, hemiSky: 0xffd6a5, hemiGround: 0x514c48, hemiIntensity: 2.5,
+    sun: 0xffc48f, sunIntensity: 4.2, rim: 0xd9a276, rimIntensity: 1.4, cloud: 0xffd9bd, cloudOpacity: 0.18,
   },
   laundry: {
-    height: 10.2, body: 0x2f83a0, roof: 0xd8eef0, windows: 0xffef9b, windowOpacity: 0.9, utility: 'antenna',
-    startHeight: 9.3, startDepth: 9, startZ: 5.3, startBack: 0.8, startBody: 0xd85b57, startRoof: 0xf2d78f,
-    targetDepth: 14, targetZ: -11.2, targetFront: -4.2, rail: 0x354d67,
-    street: 0x356777, streetWidth: 10.5, streetStripe: 0xffe875, stripeWidth: 0.13, stripeLength: 0.85,
-    skylinePalette: [0xe05d55, 0x2a9d9f, 0xf0b44c, 0x5276b8, 0xd65386], skylineWindows: [0xfff3ad, 0xbdf5f0],
-    skyline: [[-6.5,-8,3.2,8.5,4,0],[6.7,-9,3.1,6.2,4,2],[-8,-13,3.5,10.5,4.5,3],[8.2,-14,3.4,9.2,4,4],[-10,-18,3.2,6.8,4,1],[10.3,-19,3.3,11.5,4.3,0],[-7,-24,3.6,12.4,5,2],[7.2,-25,3.3,7.4,4,1],[-11,-29,3.4,9.6,5,4],[11.4,-30,3.2,13.2,4,3],[-14,-12,3.6,7.2,5,2],[14.2,-16,3.4,10.4,4,1],[-16,-23,3.2,12.6,4,0],[16,-27,3.5,8.1,5,4]],
-    fog: 0x7796a3, fogDensity: 0.014, hemiSky: 0xbfeaf0, hemiGround: 0x345d68, hemiIntensity: 2.8,
-    sun: 0xffd68b, sunIntensity: 4.2, rim: 0x44d7d2, rimIntensity: 2.1, cloud: 0xd7fbff, cloudOpacity: 0.18,
+    architecture: 'residential', height: 10.6, body: 0x547d91, startBody: 0xb96762, roof: 0xd7e4df,
+    trim: 0x36556a, accent: 0xf0b44c, windows: 0xffedb6, windowFrame: 0x294457, windowOpacity: 0.9, windowSkip: 4, utility: 'antenna',
+    street: 0x3c4650, streetStripe: 0xf4d36f, skylinePalette: [0xc45f59, 0x438f91, 0xc7954c, 0x5879a5, 0xb35f83], skylineWindows: [0xffefac, 0xbdeee7],
+    fog: 0x748b98, fogDensity: 0.016, hemiSky: 0xbfe1e5, hemiGround: 0x3d5360, hemiIntensity: 2.55,
+    sun: 0xffcf8c, sunIntensity: 3.9, rim: 0x68d4cb, rimIntensity: 2.0, cloud: 0xd9f1ee, cloudOpacity: 0.16,
   },
   garden: {
-    height: 6.5, body: 0x64764b, roof: 0xd6c18c, windows: 0xffd38c, windowOpacity: 0.7, utility: 'tank',
-    startHeight: 5.8, startDepth: 8.4, startZ: 5.4, startBack: 1.2, startBody: 0x8b694c, startRoof: 0xc9b178,
-    targetDepth: 13, targetZ: -11.8, targetFront: -5.3, rail: 0x594a39,
-    street: 0x4d5742, streetWidth: 12, streetStripe: 0xd7b66c, stripeWidth: 0.16, stripeLength: 1.5,
-    skylinePalette: [0x6c7b50, 0xa66d45, 0x556b45, 0xc08a55], skylineWindows: [0xffd18b, 0xe8efad],
-    skyline: [[-9,-11,5.8,4.2,5.8,0],[10,-14,5.2,5.1,5,1],[-14,-20,6.2,3.8,6.5,3],[15,-23,6.8,6.4,6,2],[-8,-29,7.4,5.5,7,1],[9,-32,6.2,4.4,6,0],[-17,-31,5.8,7.2,5,2],[18,-12,6.5,3.5,6,3]],
-    fog: 0x85936c, fogDensity: 0.013, hemiSky: 0xf2d39b, hemiGround: 0x4a583a, hemiIntensity: 2.6,
-    sun: 0xf2bb75, sunIntensity: 4.1, rim: 0x8fcf72, rimIntensity: 1.7, cloud: 0xf5ddb1, cloudOpacity: 0.16,
+    architecture: 'courtyard', height: 7.1, body: 0x68754e, startBody: 0x80654d, roof: 0xd5c796,
+    trim: 0x524735, accent: 0xb76b4b, windows: 0xffd892, windowFrame: 0x43392e, windowOpacity: 0.72, windowSkip: 3, utility: 'tank',
+    street: 0x414640, streetStripe: 0xd7ba75, skylinePalette: [0x68754e, 0x936b4b, 0x536747, 0xa57850], skylineWindows: [0xffd18b, 0xe2e8a7],
+    fog: 0x7f886c, fogDensity: 0.015, hemiSky: 0xe8d1a5, hemiGround: 0x46503b, hemiIntensity: 2.45,
+    sun: 0xeebc79, sunIntensity: 3.9, rim: 0x8fc378, rimIntensity: 1.7, cloud: 0xf0dcba, cloudOpacity: 0.15,
   },
   neon: {
-    height: 12.4, body: 0x211d42, roof: 0x4b3568, windows: 0x3cf4e4, windowOpacity: 0.94, utility: 'antenna',
-    startHeight: 12.2, startDepth: 11, startZ: 4.5, startBack: -1, startBody: 0x171a35, startRoof: 0x3f2f5d,
-    targetDepth: 13.6, targetZ: -10.4, targetFront: -3.6, rail: 0x1b1830,
-    street: 0x11182a, streetWidth: 8.2, streetStripe: 0xff3f9b, stripeWidth: 0.09, stripeLength: 1.8,
-    skylinePalette: [0x161a35, 0x24204b, 0x321d4f, 0x123749], skylineWindows: [0x3cf4e4, 0xff45aa, 0x8d6cff],
-    skyline: [[-6.8,-8,3.4,13.5,4,0],[6.9,-9,3.1,9.2,4,3],[-8.2,-13,3.8,16.2,4.6,2],[8.4,-14,3.2,14.3,4,1],[-9.7,-18,3.2,10.8,4,3],[9.9,-19,3.5,17.5,4.2,0],[-7,-24,3.2,18.4,4.3,1],[7.4,-25,3.4,12.7,4,2],[-11.2,-28,3.2,15.1,4.2,0],[11.4,-30,3.4,19.2,4,3],[-13.5,-12,3.2,11.6,4,2],[13.8,-16,3.3,16.8,4.4,1],[-15.5,-22,3.1,18.8,4,3],[15.8,-26,3.5,13.9,4.5,0],[-18,-31,3.2,20.2,4,2],[18.2,-10,3.4,12.4,4,1]],
-    fog: 0x211a45, fogDensity: 0.02, hemiSky: 0x403267, hemiGround: 0x101527, hemiIntensity: 1.65,
-    sun: 0x8c61ff, sunIntensity: 2.2, rim: 0x18f5e2, rimIntensity: 3.5, cloud: 0x71518f, cloudOpacity: 0.08,
+    architecture: 'sign-tower', height: 12.1, body: 0x292347, startBody: 0x1c203d, roof: 0x51436b,
+    trim: 0x15172f, accent: 0x35f5e4, windows: 0x5deadd, windowFrame: 0x101226, windowOpacity: 0.95, windowSkip: 5, utility: 'antenna',
+    street: 0x17172b, streetStripe: 0xff4fa3, skylinePalette: [0x1a1d38, 0x292348, 0x372354, 0x173b49], skylineWindows: [0x35f5e4, 0xff4fa3, 0x8c75ff],
+    fog: 0x282344, fogDensity: 0.019, hemiSky: 0x40345f, hemiGround: 0x11152a, hemiIntensity: 1.65,
+    sun: 0x9276d4, sunIntensity: 2.1, rim: 0x35f5e4, rimIntensity: 3.2, cloud: 0x67517f, cloudOpacity: 0.08,
   },
   glasshouse: {
-    height: 8.8, body: 0x4e7482, roof: 0xd8edf2, windows: 0xc8f5ff, windowOpacity: 0.82, utility: 'tank',
-    startHeight: 7.7, startDepth: 9.5, startZ: 4.75, startBack: 0, startBody: 0x496675, startRoof: 0xb8d4db,
-    targetDepth: 12.8, targetZ: -11.5, targetFront: -5.1, rail: 0x304a57,
-    street: 0x314b5a, streetWidth: 10.8, streetStripe: 0xb8edf5, stripeWidth: 0.12, stripeLength: 1.2,
-    skylinePalette: [0x557b88, 0x6c94a0, 0x3f6474, 0x789ca4], skylineWindows: [0xc9f7ff, 0x94ddea],
-    skyline: [[-9,-12,7.5,5.1,7,0],[10,-15,8.5,4.2,8,1],[-15,-21,7.2,7.6,6,2],[16,-24,9.2,6.2,8,3],[-9,-30,8.4,8.4,7,1],[10,-33,7.8,5.4,7,0],[-18,-11,7.4,4.5,7,3],[19,-18,8.6,7.1,8,2]],
-    fog: 0x7eaab8, fogDensity: 0.018, hemiSky: 0xd8f8ff, hemiGround: 0x365866, hemiIntensity: 2.55,
-    sun: 0xc7efff, sunIntensity: 3.5, rim: 0x6fe4ff, rimIntensity: 2.4, cloud: 0xe6fbff, cloudOpacity: 0.14,
+    architecture: 'glassworks', height: 9.2, body: 0x587680, startBody: 0x506b75, roof: 0xdce7e4,
+    trim: 0x344d58, accent: 0x8ed9ee, windows: 0xc4eeff, windowFrame: 0x314a55, windowOpacity: 0.82, windowSkip: 4, utility: 'tank',
+    street: 0x38464c, streetStripe: 0xb8e8ef, skylinePalette: [0x587680, 0x688992, 0x46636f, 0x78969b], skylineWindows: [0xc9f7ff, 0x91d8e6],
+    fog: 0x7898a3, fogDensity: 0.017, hemiSky: 0xd2edf2, hemiGround: 0x3d5963, hemiIntensity: 2.45,
+    sun: 0xc9e7ed, sunIntensity: 3.35, rim: 0x75d8e8, rimIntensity: 2.2, cloud: 0xe1f3f4, cloudOpacity: 0.13,
   },
   beacon: {
-    height: 14.0, body: 0x18243b, roof: 0x2b3a55, windows: 0xffca55, windowOpacity: 0.92, utility: 'antenna',
-    startHeight: 13.5, startDepth: 7.4, startZ: 5.5, startBack: 1.8, startBody: 0x131d30, startRoof: 0x26344d,
-    targetDepth: 14, targetZ: -11.5, targetFront: -4.5, rail: 0x101827,
-    street: 0x0a1220, streetWidth: 13.4, streetStripe: 0xf2c14e, stripeWidth: 0.08, stripeLength: 2.2,
-    skylinePalette: [0x101a2d, 0x17263c, 0x213049], skylineWindows: [0xffc74f, 0x5f88a8],
-    skyline: [[-10,-13,4.8,15.5,5,0],[11,-17,5.2,10.8,5,1],[-17,-24,4.6,18.2,5,2],[18,-29,5.4,13.4,6,0],[-10,-34,4.8,20.5,5,1],[13,-38,5.2,16.1,5,2]],
-    fog: 0x15223a, fogDensity: 0.022, hemiSky: 0x233456, hemiGround: 0x09111f, hemiIntensity: 1.35,
-    sun: 0x60749a, sunIntensity: 1.5, rim: 0x6aa9cf, rimIntensity: 2.1, cloud: 0x304665, cloudOpacity: 0.07,
+    architecture: 'harbor', height: 13.0, body: 0x29364b, startBody: 0x202d42, roof: 0x4c586b,
+    trim: 0x141d2c, accent: 0xf2c14e, windows: 0xf2c14e, windowFrame: 0x111827, windowOpacity: 0.9, windowSkip: 4, utility: 'antenna',
+    street: 0x151b27, streetStripe: 0xe6b84a, skylinePalette: [0x1e2b3e, 0x29384d, 0x35465b, 0x1a2637], skylineWindows: [0xf2c14e, 0x7da4bd],
+    fog: 0x26374c, fogDensity: 0.019, hemiSky: 0x344a65, hemiGround: 0x111927, hemiIntensity: 1.45,
+    sun: 0x7589a5, sunIntensity: 1.7, rim: 0x78a9c1, rimIntensity: 2.0, cloud: 0x41556e, cloudOpacity: 0.08,
   },
 }
-
 function addDistrictShell(group, kind) {
   const spec = DISTRICTS[kind]
-  const building = makeBuilding(9.2, spec.height, spec.targetDepth, spec.body, { windowColor: spec.windows, windowOpacity: spec.windowOpacity })
-  building.position.set(0, 0.28 - spec.height / 2, spec.targetZ)
+  const building = makeBuilding(9.2, spec.height, 14.5, spec.body, { kind, index: 23, windowColor: spec.windows })
+  building.position.set(0, 0.28 - spec.height / 2, -11)
   group.add(building)
-  const roof = sceneBox(group, [9.4, 0.22, spec.targetDepth + 0.2], spec.roof, [0, 0.38, spec.targetZ], { castShadow: false })
+  const roof = sceneBox(group, [9.4, 0.22, 14.7], spec.roof, [0, 0.38, -11], { castShadow: false })
   roof.receiveShadow = true
-
-  if (kind === 'depot') sceneBox(group, [2.4, 4.2, 5.2], 0x6d6257, [-5.8, -1.82, -8.2], { castShadow: false })
-  if (kind === 'laundry') {
-    sceneBox(group, [2.2, 7.4, 4.5], 0xe05d55, [-5.45, -3.42, -12.5], { castShadow: false })
-    sceneBox(group, [1.8, 5.6, 4], 0xf0b44c, [5.25, -2.52, -9.2], { castShadow: false })
-  }
-  if (kind === 'garden') sceneBox(group, [3.6, 3.3, 4.8], 0xa66d45, [5.8, -1.37, -12.8], { castShadow: false })
-  if (kind === 'neon') sceneBox(group, [2.3, 9.6, 4.2], 0x123749, [-5.6, -4.52, -11.2], { castShadow: false })
-  if (kind === 'glasshouse') sceneBox(group, [3.8, 4.6, 5.5], 0x6c94a0, [-5.9, -2.02, -12.6], { castShadow: false })
-  if (kind === 'beacon') sceneBox(group, [2.8, 11.2, 4.8], 0x101a2d, [-6.1, -5.32, -13.2], { castShadow: false })
 
   if (spec.utility === 'tank') {
     const tank = new THREE.Mesh(
       new THREE.CylinderGeometry(0.62, 0.68, 1.15, 12),
       sceneMaterial(kind === 'garden' ? 0xc98955 : kind === 'glasshouse' ? 0x6b8e95 : 0xd77858),
     )
-    tank.position.set(-3.35, 1.12, spec.targetZ - spec.targetDepth / 2 + 1.35)
+    tank.position.set(-3.35, 1.12, -15.6)
     tank.castShadow = true
     group.add(tank)
-    sceneBox(group, [1.05, 0.12, 1.05], 0x39384a, [-3.35, 0.58, spec.targetZ - spec.targetDepth / 2 + 1.35])
+    sceneBox(group, [1.05, 0.12, 1.05], 0x39384a, [-3.35, 0.58, -15.6])
   } else {
-    const antennaZ = spec.targetZ - spec.targetDepth / 2 + 1.25
-    sceneBox(group, [0.1, 2.3, 0.1], 0x39384a, [-3.4, 1.58, antennaZ])
-    sceneBox(group, [1.35, 0.08, 0.08], spec.windows, [-3.4, 2.25, antennaZ], { castShadow: false })
-    sceneBox(group, [0.08, 0.08, 1.1], spec.windows, [-3.4, 2.25, antennaZ], { castShadow: false })
+    sceneBox(group, [0.1, 2.3, 0.1], 0x39384a, [-3.4, 1.58, -15.65])
+    sceneBox(group, [1.35, 0.08, 0.08], spec.windows, [-3.4, 2.25, -15.65], { castShadow: false })
+    sceneBox(group, [0.08, 0.08, 1.1], spec.windows, [-3.4, 2.25, -15.65], { castShadow: false })
   }
 
-  const flagZ = spec.targetFront - 1.05
-  const pole = sceneBox(group, [0.08, 2.1, 0.08], 0x353544, [3.65, 1.48, flagZ])
+  const pole = sceneBox(group, [0.08, 2.1, 0.08], 0x353544, [3.65, 1.48, -7.05])
   pole.castShadow = true
-  const flag = sceneBox(group, [1.55, 0.68, 0.04], kind === 'beacon' ? 0xf2c14e : 0xf05d4e, [3.65, 2.05, flagZ], { castShadow: false })
+  const flag = sceneBox(group, [1.55, 0.68, 0.04], kind === 'beacon' ? 0xf2c14e : 0xf05d4e, [3.65, 2.05, -7.0], { castShadow: false })
   flag.geometry.translate(0.775, 0, 0)
   flag.userData.windResponsive = 'flag'
   flag.userData.baseRotation = 0

@@ -109,7 +109,12 @@ for (const [scene, route] of Object.entries(routeForScene)) {
 }
 await streetOnlyStyle.evaluate((node) => node.remove())
 if (new Set(scenes.map(({ district }) => district.palette)).size !== 6) throw new Error('district palettes are not unique')
-if (new Set(scenes.map(({ district }) => district.gap)).size !== 6) throw new Error('district street gaps are not unique')
+if (new Set(scenes.map(({ district }) => district.architecture)).size !== 6) throw new Error('district architecture families are not unique')
+for (const { scene, district } of scenes) {
+  if (district.gap !== 4 || district.streetWidth !== 8 || district.skylineCount !== 22) {
+    throw new Error(`${scene}: fa376ab street skeleton changed: ${JSON.stringify(district)}`)
+  }
+}
 
 await startRoute(6)
 const beforeFlip = await page.evaluate(() => window.__cg.snapshot().wind)

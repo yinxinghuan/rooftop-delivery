@@ -6,75 +6,85 @@
       "scene": "depot",
       "route": 1,
       "target": {
-        "x": 0.819453954517208,
-        "z": -10.342052714360563,
+        "x": -0.14283130066847616,
+        "z": -9.905007823021135,
         "scale": 1.58,
         "secondary": null
       },
       "district": {
-        "gap": 1.4,
-        "skylineCount": 8,
-        "palette": 10121556
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 8547161,
+        "architecture": "warehouse"
       }
     },
     {
       "scene": "laundry",
       "route": 2,
       "target": {
-        "x": -2.972174314323481,
-        "z": -10.801471170614601,
+        "x": 2.8041230547156513,
+        "z": -11.295137493021256,
         "scale": 1,
         "secondary": null
       },
       "district": {
-        "gap": 5,
-        "skylineCount": 14,
-        "palette": 3113888
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 5537169,
+        "architecture": "residential"
       }
     },
     {
       "scene": "garden",
       "route": 5,
       "target": {
-        "x": -0.40087277893274487,
-        "z": -9.228681484328884,
+        "x": 1.2178722984091102,
+        "z": -11.745086979785277,
         "scale": 1.04,
         "secondary": null
       },
       "district": {
-        "gap": 6.5,
-        "skylineCount": 8,
-        "palette": 6583883
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 6845774,
+        "architecture": "courtyard"
       }
     },
     {
       "scene": "neon",
       "route": 6,
       "target": {
-        "x": 0.06487381787213842,
-        "z": -11.811887994078115,
+        "x": 1.2524340683447173,
+        "z": -10.376692415997907,
         "scale": 1.02,
         "secondary": null
       },
       "district": {
-        "gap": 2.6,
-        "skylineCount": 16,
-        "palette": 2170178
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 2696007,
+        "architecture": "sign-tower"
       }
     },
     {
       "scene": "glasshouse",
       "route": 7,
       "target": {
-        "x": -1.5217716898516445,
-        "z": -10.482357874413548,
+        "x": 0.6357697355017824,
+        "z": -9.131625374694085,
         "scale": 0.98,
         "secondary": null
       },
       "district": {
-        "gap": 5.1,
-        "skylineCount": 8,
-        "palette": 5141634
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 5797504,
+        "architecture": "glassworks"
       }
     },
     {
@@ -82,18 +92,20 @@
       "route": 8,
       "target": {
         "x": -1.85,
-        "z": -10.566369723834873,
+        "z": -10.831422254671724,
         "scale": 0.94,
         "secondary": {
           "x": 1.85,
-          "z": -11.066369723834873,
+          "z": -11.331422254671724,
           "scale": 0.8835999999999999
         }
       },
       "district": {
-        "gap": 6.3,
-        "skylineCount": 6,
-        "palette": 1582139
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 2700875,
+        "architecture": "harbor"
       }
     }
   ],
@@ -102,50 +114,50 @@
     "delivered": 0
   },
   "windFlip": {
-    "beforeFlip": 0.12664953199910872,
-    "duringFlip": -0.12664953199910872,
-    "afterFlip": -0.12664953199910872,
+    "beforeFlip": -0.4961474967688257,
+    "duringFlip": 0.4961474967688257,
+    "afterFlip": 0.4961474967688257,
     "directionChecks": [
       {
         "route": 6,
-        "wind": 0.18457999875152611,
-        "hud": 1,
-        "flag": 1
+        "wind": -0.32545415194287186,
+        "hud": -1,
+        "flag": -1
       },
       {
         "route": 9,
-        "wind": -0.22147411219328783,
+        "wind": -0.8799892164195027,
         "pending": null,
         "hud": -1,
         "flag": -1
       },
       {
         "route": 10,
-        "wind": 0.37484577428256477,
+        "wind": -0.3688489580814449,
         "pending": null,
-        "hud": 1,
-        "flag": 1
+        "hud": -1,
+        "flag": -1
       }
     ]
   },
   "dualTargets": {
     "route8": {
       "x": 1.85,
-      "z": -10.350764787190819,
+      "z": -10.020266428981977,
       "scale": 0.94,
       "secondary": {
         "x": -1.85,
-        "z": -10.850764787190819,
+        "z": -9.520266428981977,
         "scale": 0.8835999999999999
       }
     },
     "route10": {
-      "x": -1.2664280481539372,
-      "z": -10.840131182228804,
+      "x": 2.132861612462295,
+      "z": -10.422338098945671,
       "scale": 0.86,
       "secondary": {
-        "x": 2.433571951846063,
-        "z": -10.340131182228804,
+        "x": -1.567138387537705,
+        "z": -10.922338098945671,
         "scale": 0.8083999999999999
       }
     }
