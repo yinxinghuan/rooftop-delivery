@@ -558,12 +558,25 @@ function addWindow(group, position, rotationY, frameMaterial, paneMaterial, widt
 function addArchitectureDetails(group, kind, width, height, depth, options) {
   const spec = DISTRICTS[kind]
   const top = height / 2
+  const index = options.index || 0
+  const streetFace = options.streetFace || 0
+  const roofDecor = options.roofDecor !== false
   if (kind === 'depot') {
     const doors = Math.max(2, Math.floor(width / 2.2))
     for (let index = 0; index < doors; index += 1) {
       const x = doors === 1 ? 0 : -width * 0.3 + index * (width * 0.6 / (doors - 1))
       sceneBox(group, [Math.min(1.25, width / doors - 0.18), 1.15, 0.08], 0x4c4945, [x, -height / 2 + 0.68, depth / 2 + 0.08], { castShadow: false })
       sceneBox(group, [Math.min(1.4, width / doors), 0.14, 0.48], spec.accent, [x, -height / 2 + 1.38, depth / 2 + 0.2], { castShadow: false })
+    }
+    if (streetFace) {
+      for (const z of [-depth * 0.24, depth * 0.24]) {
+        sceneBox(group, [0.08, 1.08, Math.min(1.05, depth * 0.26)], 0x4c4945, [streetFace * (width / 2 + 0.08), -height / 2 + 0.64, z], { castShadow: false })
+        sceneBox(group, [0.46, 0.14, Math.min(1.18, depth * 0.29)], spec.accent, [streetFace * (width / 2 + 0.2), -height / 2 + 1.32, z], { castShadow: false })
+      }
+      if (roofDecor) {
+        sceneBox(group, [0.64, 0.48, 0.58], index % 3 ? 0xd99a5f : 0xf05d4e, [streetFace * width * 0.18, top + 0.38, -depth * 0.08])
+        sceneBox(group, [0.48, 0.36, 0.46], 0xc58450, [streetFace * width * 0.18, top + 0.28, depth * 0.18])
+      }
     }
   } else if (kind === 'laundry') {
     for (let y = -height / 2 + 1.35; y < top - 0.6; y += 2.35) {
@@ -573,27 +586,80 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
         sceneBox(group, [0.22, 0.3, 0.025], color, [offset * width, y + 0.05, depth / 2 + 0.7], { castShadow: false })
       }
     }
-  } else if (kind === 'garden') {
-    sceneBox(group, [width * 0.72, 0.34, depth * 0.3], 0x9b5d3d, [0, top + 0.3, -depth * 0.14], { castShadow: false })
-    for (const x of [-width * 0.24, 0, width * 0.24]) {
-      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(Math.min(0.34, width * 0.08), 0), sceneMaterial(x === 0 ? 0x477c43 : 0x6f9c4c))
-      crown.position.set(x, top + 0.68, -depth * 0.14)
-      group.add(crown)
+    if (streetFace) {
+      const lineX = streetFace * (width / 2 + 0.28)
+      const lineY = top - 0.55
+      sceneBox(group, [0.035, 0.035, depth * 0.82], 0xf4ead8, [lineX, lineY, 0], { castShadow: false })
+      ;[[-0.28, 0xf05d4e], [0, 0xf7d58b], [0.28, 0x65c7b8]].forEach(([offset, color], clothIndex) => {
+        const cloth = sceneBox(group, [0.04, 0.5, Math.min(0.64, depth * 0.19)], color, [lineX, lineY - 0.27 - (clothIndex % 2) * 0.05, offset * depth])
+        cloth.userData.windResponsive = 'laundry'
+      })
     }
-    for (const x of [-width * 0.38, width * 0.38]) sceneBox(group, [0.12, 0.7, depth * 0.72], spec.trim, [x, top + 0.34, 0], { castShadow: false })
+  } else if (kind === 'garden') {
+    if (roofDecor) {
+      sceneBox(group, [width * 0.72, 0.34, depth * 0.3], 0x9b5d3d, [0, top + 0.3, -depth * 0.14], { castShadow: false })
+      for (const x of [-width * 0.24, 0, width * 0.24]) {
+        const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(Math.min(0.34, width * 0.08), 0), sceneMaterial(x === 0 ? 0x477c43 : 0x6f9c4c))
+        crown.position.set(x, top + 0.68, -depth * 0.14)
+        group.add(crown)
+      }
+      for (const x of [-width * 0.38, width * 0.38]) sceneBox(group, [0.12, 0.7, depth * 0.72], spec.trim, [x, top + 0.34, 0], { castShadow: false })
+    }
+    if (streetFace) {
+      for (const y of [-height * 0.18, height * 0.14]) {
+        sceneBox(group, [0.16, 0.22, depth * 0.34], 0x9b5d3d, [streetFace * (width / 2 + 0.09), y, 0], { castShadow: false })
+        for (const z of [-depth * 0.11, 0, depth * 0.11]) {
+          const shrub = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), sceneMaterial((index + Math.round(z * 10)) % 2 ? 0x477c43 : 0x6f9c4c))
+          shrub.position.set(streetFace * (width / 2 + 0.2), y + 0.26, z)
+          group.add(shrub)
+        }
+      }
+    }
   } else if (kind === 'neon') {
-    const signMaterial = new THREE.MeshBasicMaterial({ color: options.index % 2 ? 0xff4fa3 : 0x35f5e4 })
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(1.35, width * 0.44), Math.min(2.4, height * 0.38)), signMaterial)
-    sign.position.set(width * 0.24, Math.min(top - 0.8, 1.2), depth / 2 + 0.085)
-    group.add(sign)
-    sceneBox(group, [width * 0.7, 0.12, 0.12], options.index % 2 ? 0xff4fa3 : 0x35f5e4, [0, top + 0.55, depth / 2], { emissive: options.index % 2 ? 0xff4fa3 : 0x35f5e4, emissiveIntensity: 1.8, castShadow: false })
+    const neonColor = index % 2 ? 0xff4fa3 : 0x35f5e4
+    if (streetFace && index % 4 < 2) {
+      const labels = ['OPEN', 'POST', 'ROOF']
+      const texture = makeNeonSignTexture(labels[index % labels.length])
+      const sideSign = new THREE.Mesh(
+        new THREE.PlaneGeometry(Math.min(2.4, depth * 0.58), Math.min(0.9, height * 0.17)),
+        new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
+      )
+      sideSign.position.set(streetFace * (width / 2 + 0.095), top - 0.72, 0)
+      sideSign.rotation.y = streetFace > 0 ? Math.PI / 2 : -Math.PI / 2
+      group.add(sideSign)
+      const frontSign = new THREE.Mesh(
+        new THREE.PlaneGeometry(Math.min(2.5, width * 0.76), Math.min(0.9, height * 0.17)),
+        new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
+      )
+      frontSign.position.set(0, top - 0.72, depth / 2 + 0.095)
+      group.add(frontSign)
+    } else {
+      const signMaterial = new THREE.MeshBasicMaterial({ color: neonColor })
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(1.35, width * 0.44), Math.min(2.0, height * 0.34)), signMaterial)
+      sign.position.set(width * 0.24, Math.min(top - 0.8, 1.2), depth / 2 + 0.085)
+      group.add(sign)
+    }
+    if (roofDecor) sceneBox(group, [width * 0.7, 0.12, 0.12], neonColor, [0, top + 0.55, depth / 2], { emissive: neonColor, emissiveIntensity: 1.8, castShadow: false })
   } else if (kind === 'glasshouse') {
-    const glass = sceneBox(group, [width * 0.64, 0.78, depth * 0.42], 0x9adcec, [0, top + 0.52, 0], { opacity: 0.38, castShadow: false })
-    glass.material.depthWrite = false
-    for (const x of [-width * 0.28, 0, width * 0.28]) sceneBox(group, [0.08, 1.0, depth * 0.44], spec.trim, [x, top + 0.52, 0], { castShadow: false })
+    if (roofDecor) {
+      const glass = sceneBox(group, [width * 0.64, 0.78, depth * 0.42], 0x9adcec, [0, top + 0.52, 0], { opacity: 0.38, castShadow: false })
+      glass.material.depthWrite = false
+      for (const x of [-width * 0.28, 0, width * 0.28]) sceneBox(group, [0.08, 1.0, depth * 0.44], spec.trim, [x, top + 0.52, 0], { castShadow: false })
+    }
   } else if (kind === 'beacon') {
     for (const x of [-width * 0.38, width * 0.38]) sceneBox(group, [0.22, height + 0.2, 0.18], spec.trim, [x, 0, depth / 2 + 0.08], { castShadow: false })
-    if ((options.index || 0) % 3 === 0) {
+    if (roofDecor && index === 2) {
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.58, 2.25, 10), sceneMaterial(0xfff5de))
+      tower.position.set(0, top + 1.15, 0)
+      group.add(tower)
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), new THREE.MeshBasicMaterial({ color: spec.accent }))
+      lamp.position.set(0, top + 2.4, 0)
+      group.add(lamp)
+      const beam = new THREE.Mesh(new THREE.ConeGeometry(0.82, 3.8, 14, 1, true), new THREE.MeshBasicMaterial({ color: spec.accent, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }))
+      beam.rotation.z = -Math.PI / 2
+      beam.position.set(-1.85, top + 2.4, 0)
+      group.add(beam)
+    } else if (roofDecor && index % 3 === 0) {
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.46, 0.75, 8), sceneMaterial(spec.accent))
       cap.position.set(0, top + 0.58, 0)
       group.add(cap)
@@ -603,7 +669,7 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
 
 function addDistrictEnvironment(group, kind) {
   const spec = DISTRICTS[kind]
-  const start = makeBuilding(9.2, 8.5, 9.5, spec.startBody, { kind, index: 22, windowColor: spec.windows })
+  const start = makeBuilding(9.2, 8.5, 9.5, spec.startBody, { kind, index: 22, windowColor: spec.windows, roofDecor: false })
   start.position.set(0, -4.25, 5)
   group.add(start)
   sceneBox(group, [9.4, 0.22, 9.7], spec.startRoof, [0, 0.38, 5], { castShadow: false })
@@ -784,7 +850,9 @@ function makeLabelTexture(text = 'RD / 01', accent = '#f05d4e') {
   return texture
 }
 
-function makeNeonSignTexture() {
+function makeNeonSignTexture(text = 'NIGHT POST') {
+  makeNeonSignTexture.cache ||= new Map()
+  if (makeNeonSignTexture.cache.has(text)) return makeNeonSignTexture.cache.get(text)
   const canvas = document.createElement('canvas')
   canvas.width = 768
   canvas.height = 224
@@ -796,16 +864,17 @@ function makeNeonSignTexture() {
   ctx.font = '900 92px Arial Black, Arial, sans-serif'
   ctx.strokeStyle = '#123c49'
   ctx.lineWidth = 19
-  ctx.strokeText('NIGHT POST', 384, 112)
+  ctx.strokeText(text, 384, 112)
   ctx.shadowColor = '#35f5e4'
   ctx.strokeStyle = '#35f5e4'
   ctx.lineWidth = 10
-  ctx.strokeText('NIGHT POST', 384, 112)
+  ctx.strokeText(text, 384, 112)
   ctx.shadowColor = '#ff3f9b'
   ctx.fillStyle = '#fff5de'
-  ctx.fillText('NIGHT POST', 384, 112)
+  ctx.fillText(text, 384, 112)
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
+  makeNeonSignTexture.cache.set(text, texture)
   return texture
 }
 
@@ -890,7 +959,7 @@ const DISTRICTS = {
 }
 function addDistrictShell(group, kind) {
   const spec = DISTRICTS[kind]
-  const building = makeBuilding(9.2, spec.height, 14.5, spec.body, { kind, index: 23, windowColor: spec.windows })
+  const building = makeBuilding(9.2, spec.height, 14.5, spec.body, { kind, index: 23, windowColor: spec.windows, roofDecor: false })
   building.position.set(0, 0.28 - spec.height / 2, -11)
   group.add(building)
   const roof = sceneBox(group, [9.4, 0.22, 14.7], spec.roof, [0, 0.38, -11], { castShadow: false })
@@ -939,70 +1008,6 @@ function createLevelScene(kind) {
   const group = new THREE.Group()
   addDistrictEnvironment(group, kind)
   addDistrictShell(group, kind)
-  if (kind === 'depot') {
-    sceneBox(group, [1.15, 0.78, 1.05], 0xd99a5f, [-2.9, 0.86, -6.6])
-    sceneBox(group, [0.86, 0.56, 0.82], 0xf05d4e, [-1.85, 0.75, -6.15])
-    sceneBox(group, [2.8, 1.05, 0.12], 0x39384a, [2.1, 1.28, -16.1])
-    sceneBox(group, [2.45, 0.72, 0.05], 0xfff5de, [2.1, 1.28, -16.02], { castShadow: false })
-    for (const x of [1.4, 2.1, 2.8]) sceneBox(group, [0.12, 0.5, 0.06], 0xf05d4e, [x, 1.28, -15.98], { castShadow: false })
-  } else if (kind === 'laundry') {
-    for (const x of [-3.45, 3.45]) sceneBox(group, [0.08, 2.15, 0.08], 0x4a465d, [x, 1.55, -15.1])
-    for (const z of [-15.05, -14.7]) sceneBox(group, [6.9, 0.035, 0.035], 0xf4ead8, [0, 2.15, z], { castShadow: false })
-    ;[[-2.2, 0xf05d4e], [-0.75, 0xf7d58b], [0.8, 0x79d7d2], [2.2, 0x8a6aa6]].forEach(([x, color], index) => {
-      const cloth = sceneBox(group, [0.75, 0.78, 0.04], color, [x, 1.75 - (index % 2) * 0.08, -15.02])
-      cloth.userData.windResponsive = 'laundry'
-    })
-  } else if (kind === 'garden') {
-    ;[[-3.0, -14.8], [2.75, -14.3], [-3.15, -7.0], [2.9, -6.7]].forEach(([x, z], index) => {
-      sceneBox(group, [1.65, 0.48, 0.72], index % 2 ? 0xd99a5f : 0xb76b4b, [x, 0.73, z])
-      for (const offset of [-0.48, 0, 0.48]) {
-        const plant = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28 + (index % 2) * 0.05, 0), sceneMaterial(index % 2 ? 0x6fa361 : 0x4f8a58))
-        plant.position.set(x + offset, 1.12 + Math.abs(offset) * 0.12, z)
-        plant.castShadow = true
-        group.add(plant)
-      }
-    })
-  } else if (kind === 'neon') {
-    const signBack = sceneBox(group, [5.8, 2.05, 0.18], 0x0d1024, [0.45, 1.75, -15.45], { emissive: 0x15102d, emissiveIntensity: 0.7 })
-    signBack.castShadow = true
-    const sign = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.28, 1.52),
-      new THREE.MeshBasicMaterial({ map: makeNeonSignTexture(), transparent: true, depthWrite: false }),
-    )
-    sign.position.set(0.45, 1.75, -15.34)
-    group.add(sign)
-    const cyanGlow = new THREE.PointLight(0x35f5e4, 7.5, 8)
-    cyanGlow.position.set(-1.2, 2.2, -14.8)
-    group.add(cyanGlow)
-    const magentaGlow = new THREE.PointLight(0xff3f9b, 6.5, 7)
-    magentaGlow.position.set(2.1, 1.35, -14.8)
-    group.add(magentaGlow)
-    sceneBox(group, [1.8, 0.18, 1.2], 0x4b5b78, [-2.7, 0.62, -7.1], { metalness: 0.18 })
-  } else if (kind === 'glasshouse') {
-    sceneBox(group, [3.8, 0.08, 3.7], 0xf4ead8, [2.45, 0.58, -13.65])
-    for (const x of [0.75, 4.15]) for (const z of [-15.3, -12.0]) sceneBox(group, [0.1, 2.25, 0.1], 0x3d4852, [x, 1.7, z])
-    for (const z of [-15.3, -12.0]) sceneBox(group, [3.4, 1.82, 0.07], 0x83d4e8, [2.45, 1.62, z], { opacity: 0.56, castShadow: false })
-    for (const x of [1.6, 2.45, 3.3]) sceneBox(group, [0.07, 1.8, 3.35], 0x4f5964, [x, 1.62, -13.65], { castShadow: false })
-    const roofLeft = sceneBox(group, [2.08, 0.08, 3.5], 0x83d4e8, [1.55, 2.72, -13.65], { opacity: 0.5, castShadow: false })
-    roofLeft.rotation.z = -0.34
-    const roofRight = sceneBox(group, [2.08, 0.08, 3.5], 0x83d4e8, [3.35, 2.72, -13.65], { opacity: 0.5, castShadow: false })
-    roofRight.rotation.z = 0.34
-  } else if (kind === 'beacon') {
-    const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.05, 2.65, 12), sceneMaterial(0xfff5de))
-    tower.position.set(2.85, 1.82, -15.0)
-    tower.castShadow = true
-    group.add(tower)
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 0.92, 0.28, 12), sceneMaterial(0x353544))
-    cap.position.set(2.85, 3.18, -15.0)
-    group.add(cap)
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.43, 10, 8), new THREE.MeshBasicMaterial({ color: 0xf2c14e }))
-    lamp.position.set(2.85, 3.52, -15.0)
-    group.add(lamp)
-    const beam = new THREE.Mesh(new THREE.ConeGeometry(1.35, 5.5, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2c14e, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }))
-    beam.rotation.z = -Math.PI / 2
-    beam.position.set(0.15, 3.52, -15.0)
-    group.add(beam)
-  }
   return group
 }
 
