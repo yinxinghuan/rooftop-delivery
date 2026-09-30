@@ -409,13 +409,26 @@ export function createWorld(container) {
     get sceneName() { return sceneName },
     get districtMetrics() {
       const spec = DISTRICTS[sceneName]
-      const neonCounts = { textSigns: 0, symbols: 0, boards: 0, eaves: 0, streetTubes: 0 }
+      const neonCounts = { textSigns: 0, foregroundTextSigns: 0, rearTextSigns: 0, symbols: 0, foregroundSymbols: 0, backgroundSymbols: 0, crosses: 0, boards: 0, eaves: 0, streetTubes: 0, roundTubes: 0, maxTubeRadius: 0 }
       if (sceneName === 'neon') scenes.neon.traverse((child) => {
-        if (child.userData.neonText) neonCounts.textSigns += 1
-        if (child.userData.neonSymbol) neonCounts.symbols += 1
+        if (child.userData.neonText) {
+          neonCounts.textSigns += 1
+          if (child.userData.neonTextZone === 'foreground') neonCounts.foregroundTextSigns += 1
+          if (child.userData.neonTextZone === 'rear') neonCounts.rearTextSigns += 1
+        }
+        if (child.userData.neonSymbol) {
+          neonCounts.symbols += 1
+          if (child.userData.neonSymbolRole === 'foreground') neonCounts.foregroundSymbols += 1
+          if (child.userData.neonSymbolRole === 'background') neonCounts.backgroundSymbols += 1
+          if (child.userData.neonSymbol === 'cross') neonCounts.crosses += 1
+        }
         if (child.userData.neonBillboard) neonCounts.boards += 1
         if (child.userData.neonTubeRole === 'eave') neonCounts.eaves += 1
         if (child.userData.neonTubeRole === 'street') neonCounts.streetTubes += 1
+        if (child.userData.neonTubeRadius) {
+          neonCounts.roundTubes += 1
+          neonCounts.maxTubeRadius = Math.max(neonCounts.maxTubeRadius, child.userData.neonTubeRadius)
+        }
       })
       return {
         gap: 4,
@@ -629,11 +642,16 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
     const neonColor = neonColors[index % neonColors.length]
     if (roofDecor) {
       if (streetFace) {
-        const eave = addGlowTube(group, [0.2, 0.2, depth + 0.12], neonColor, [streetFace * (width / 2 + 0.08), top + 0.52, 0])
+        const eave = addGlowTube(group, [0.12, 0.12, depth + 0.12], neonColor, [streetFace * (width / 2 + 0.08), top + 0.52, 0])
         eave.userData.neonTubeRole = 'eave'
       }
     }
-    if (streetFace && ![0, 1, 20, 21].includes(index)) addNeonSymbol(group, ['arrow', 'circle', 'cross', 'cup'][index % 4], neonColor, streetFace, width, height, index)
+    if (streetFace && ![0, 1, 20, 21].includes(index)) {
+      const foreground = index === 18 || index === 19
+      const backgroundSymbols = ['circle', 'arrow', 'cup', 'circle', 'cross', 'circle', 'arrow', 'cup']
+      const symbol = index === 18 ? 'cup' : index === 19 ? 'arrow' : backgroundSymbols[index % backgroundSymbols.length]
+      addNeonSymbol(group, symbol, neonColor, streetFace, width, height, index, foreground ? 0.76 : 0.42, foreground ? 'foreground' : 'background')
+    }
   } else if (kind === 'glasshouse') {
     if (roofDecor) {
       const glass = sceneBox(group, [width * 0.64, 0.78, depth * 0.42], 0x9adcec, [0, top + 0.52, 0], { opacity: 0.38, castShadow: false })
@@ -661,7 +679,7 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
   }
 }
 
-function addNeonText(group, { text, width, height, color, position, axis = 'front', vertical = false }) {
+function addNeonText(group, { text, width, height, color, position, axis = 'front', vertical = false, zone = 'foreground' }) {
   const isFront = axis === 'front'
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(width, height),
@@ -670,86 +688,96 @@ function addNeonText(group, { text, width, height, color, position, axis = 'fron
   plane.position.set(...position)
   if (!isFront) plane.rotation.y = axis === 'right' ? Math.PI / 2 : -Math.PI / 2
   plane.userData.neonText = text
+  plane.userData.neonTextZone = zone
   group.add(plane)
   return plane
 }
 
-function rotateGlowPair(group, rotationZ) {
-  const tube = group.children[group.children.length - 1]
-  const glow = group.children[group.children.length - 2]
-  tube.rotation.z = rotationZ
-  glow.rotation.z = rotationZ
+function rotateGlowPair(tube, rotationZ) {
+  tube.rotation.z += rotationZ
 }
 
 function addNeonArrow(group, color, position, scale = 1) {
   const arrow = new THREE.Group()
-  addGlowTube(arrow, [1.55 * scale, 0.18, 0.18], color, [-0.15 * scale, 0, 0], 0.18)
-  addGlowTube(arrow, [0.72 * scale, 0.18, 0.18], color, [0.62 * scale, 0.25 * scale, 0], 0.18)
-  rotateGlowPair(arrow, -0.72)
-  addGlowTube(arrow, [0.72 * scale, 0.18, 0.18], color, [0.62 * scale, -0.25 * scale, 0], 0.18)
-  rotateGlowPair(arrow, 0.72)
+  addGlowTube(arrow, [1.55 * scale, 0.12, 0.12], color, [-0.15 * scale, 0, 0], 0.16)
+  rotateGlowPair(addGlowTube(arrow, [0.72 * scale, 0.12, 0.12], color, [0.62 * scale, 0.25 * scale, 0], 0.16), -0.72)
+  rotateGlowPair(addGlowTube(arrow, [0.72 * scale, 0.12, 0.12], color, [0.62 * scale, -0.25 * scale, 0], 0.16), 0.72)
   arrow.position.set(...position)
   arrow.userData.neonSymbol = 'parcel-arrow'
+  arrow.userData.neonSymbolRole = 'hero'
   group.add(arrow)
 }
 
 function addNeonRing(group, color, position, radius) {
   const glow = new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.26, 10, 40),
+    new THREE.TorusGeometry(radius, 0.12, 10, 40),
     sceneMaterial(color, { emissive: color, emissiveIntensity: 2.2, opacity: 0.2 }),
   )
   glow.material.depthWrite = false
   glow.position.set(...position)
   group.add(glow)
-  const tube = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.14, 10, 40), sceneMaterial(color, { emissive: color, emissiveIntensity: 5.2 }))
+  const tube = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.06, 10, 40), sceneMaterial(color, { emissive: color, emissiveIntensity: 5.2 }))
   tube.position.set(...position)
   tube.userData.neonSymbol = '24h-circle'
+  tube.userData.neonSymbolRole = 'hero'
+  tube.userData.neonTubeRadius = 0.06
   group.add(tube)
 }
 
-function addNeonSymbol(group, symbol, color, streetFace, width, height, index) {
+function addNeonSymbol(group, symbol, color, streetFace, width, height, index, scale = 0.42, role = 'background') {
   const symbolGroup = new THREE.Group()
   const faceX = streetFace * (width / 2 + 0.11)
   const y = height / 2 - 1.2
   const addPart = (size, offset, rotationX = 0) => {
-    const tube = addGlowTube(symbolGroup, size, color, offset, 0.17)
-    tube.rotation.x = rotationX
-    const glow = symbolGroup.children[symbolGroup.children.length - 2]
-    glow.rotation.x = rotationX
+    const tube = addGlowTube(symbolGroup, size.map((value) => value * scale), color, offset.map((value) => value * scale), 0.14)
+    tube.rotation.x += rotationX
   }
   if (symbol === 'arrow') {
-    addPart([0.18, 0.18, 1.5], [0, 0, 0])
-    addPart([0.18, 0.18, 0.72], [0, 0.25, 0.62], 0.72)
-    addPart([0.18, 0.18, 0.72], [0, -0.25, 0.62], -0.72)
+    addPart([0.12, 0.12, 1.5], [0, 0, 0])
+    addPart([0.12, 0.12, 0.72], [0, 0.25, 0.62], 0.72)
+    addPart([0.12, 0.12, 0.72], [0, -0.25, 0.62], -0.72)
   } else if (symbol === 'circle') {
-    const torus = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.12, 8, 24), sceneMaterial(color, { emissive: color, emissiveIntensity: 4.8 }))
+    const torus = new THREE.Mesh(new THREE.TorusGeometry(0.62 * scale, 0.06, 8, 24), sceneMaterial(color, { emissive: color, emissiveIntensity: 4.8 }))
     torus.rotation.y = Math.PI / 2
+    torus.userData.neonTubeRadius = 0.06
     symbolGroup.add(torus)
   } else if (symbol === 'cross') {
-    addPart([0.18, 1.35, 0.18], [0, 0, 0])
-    addPart([0.18, 0.18, 1.35], [0, 0, 0])
+    addPart([0.12, 1.35, 0.12], [0, 0, 0])
+    addPart([0.12, 0.12, 1.35], [0, 0, 0])
   } else {
-    addPart([0.18, 1.05, 0.18], [0, 0, -0.48])
-    addPart([0.18, 1.05, 0.18], [0, 0, 0.48])
-    addPart([0.18, 0.18, 1.12], [0, -0.52, 0])
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.1, 8, 18, Math.PI), sceneMaterial(color, { emissive: color, emissiveIntensity: 4.8 }))
+    addPart([0.12, 1.05, 0.12], [0, 0, -0.48])
+    addPart([0.12, 1.05, 0.12], [0, 0, 0.48])
+    addPart([0.12, 0.12, 1.12], [0, -0.52, 0])
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.32 * scale, 0.06, 8, 18, Math.PI), sceneMaterial(color, { emissive: color, emissiveIntensity: 4.8 }))
     handle.rotation.set(0, Math.PI / 2, Math.PI / 2)
-    handle.position.set(0, -0.05, 0.62)
+    handle.position.set(0, -0.05 * scale, 0.62 * scale)
+    handle.userData.neonTubeRadius = 0.06
     symbolGroup.add(handle)
   }
   symbolGroup.position.set(faceX, y - (index % 3) * 0.18, 0)
   symbolGroup.userData.neonSymbol = symbol
+  symbolGroup.userData.neonSymbolRole = role
+  symbolGroup.userData.neonSymbolScale = scale
   group.add(symbolGroup)
 }
 
-function addGlowTube(group, size, color, position, glowOpacity = 0.22) {
-  const glowSize = size.map((value) => value + 0.3)
-  const glow = sceneBox(group, glowSize, color, position, { emissive: color, emissiveIntensity: 2.4, opacity: glowOpacity, castShadow: false })
+function addGlowTube(group, size, color, position, glowOpacity = 0.22, radius = 0.06) {
+  const axis = size.indexOf(Math.max(...size))
+  const length = size[axis]
+  const tubeGroup = new THREE.Group()
+  const geometry = (tubeRadius) => new THREE.CylinderGeometry(tubeRadius, tubeRadius, length, 12)
+  const glow = new THREE.Mesh(geometry(radius * 2), sceneMaterial(color, { emissive: color, emissiveIntensity: 2.4, opacity: glowOpacity }))
   glow.material.depthWrite = false
   glow.renderOrder = 1
-  const tube = sceneBox(group, size, color, position, { emissive: color, emissiveIntensity: 5.2, castShadow: false })
+  const tube = new THREE.Mesh(geometry(radius), sceneMaterial(color, { emissive: color, emissiveIntensity: 5.2 }))
   tube.renderOrder = 2
-  return tube
+  tube.userData.neonTubeRadius = radius
+  tubeGroup.add(glow, tube)
+  if (axis === 0) tubeGroup.rotation.z = Math.PI / 2
+  if (axis === 2) tubeGroup.rotation.x = Math.PI / 2
+  tubeGroup.position.set(...position)
+  group.add(tubeGroup)
+  return tubeGroup
 }
 
 function addDistrictEnvironment(group, kind) {
@@ -785,10 +813,10 @@ function addDistrictEnvironment(group, kind) {
     sceneBox(group, [1.0, 0.14, 0.14], 0x232942, [6.4, 2.42, -1.08], { metalness: 0.26, castShadow: false })
 
     addNeonRing(group, 0xffb84d, [6.05, 2.75, -13.7], 1.42)
-    addNeonText(group, { text: '24H', width: 2.15, height: 1.18, color: 0xffb84d, position: [6.05, 2.75, -13.55] })
+    addNeonText(group, { text: '24H', width: 2.15, height: 1.18, color: 0xffb84d, position: [6.05, 2.75, -13.55], zone: 'rear' })
 
-    addNeonText(group, { text: 'EXPRESS', width: 4.6, height: 1.35, color: 0x5cff8d, position: [-5.8, 3.3, -12.1] })
-    sceneBox(group, [1.1, 0.12, 0.12], 0x232942, [-6.58, 3.3, -12.18], { metalness: 0.26, castShadow: false })
+    addNeonText(group, { text: 'EXPRESS', width: 4.45, height: 1.35, color: 0x5cff8d, position: [-5.55, 4.0, -4.15] })
+    sceneBox(group, [1.1, 0.12, 0.12], 0x232942, [-6.33, 4.0, -4.23], { metalness: 0.26, castShadow: false })
   }
 
   const street = new THREE.Mesh(
@@ -804,8 +832,8 @@ function addDistrictEnvironment(group, kind) {
     group.add(stripe)
   }
   if (kind === 'neon') {
-    const leftStreetTube = addGlowTube(group, [0.22, 0.22, 4.45], 0x35f5e4, [-4.04, 0.56, -1.75], 0.28)
-    const rightStreetTube = addGlowTube(group, [0.22, 0.22, 4.45], 0xff4fa3, [4.04, 0.56, -1.75], 0.28)
+    const leftStreetTube = addGlowTube(group, [0.12, 0.12, 4.45], 0x35f5e4, [-4.04, 0.56, -1.75], 0.22)
+    const rightStreetTube = addGlowTube(group, [0.12, 0.12, 4.45], 0xff4fa3, [4.04, 0.56, -1.75], 0.22)
     leftStreetTube.userData.neonTubeRole = 'street'
     rightStreetTube.userData.neonTubeRole = 'street'
   }
@@ -974,18 +1002,17 @@ function makeNeonSignTexture(text = 'NIGHT', color = 0x35f5e4, vertical = false)
   const tubeColor = `#${color.toString(16).padStart(6, '0')}`
   const coreColor = color === 0xff4fa3 ? '#ffd0e8' : color === 0xffb84d ? '#fff0b8' : color === 0x5cff8d ? '#d0ffdc' : '#c5fff9'
   const drawTubeText = (value, x, y) => {
-    const compactGlow = text === 'EXPRESS'
     ctx.shadowColor = tubeColor
-    ctx.shadowBlur = compactGlow ? 26 : 54
+    ctx.shadowBlur = 54
     ctx.strokeStyle = tubeColor
-    ctx.lineWidth = compactGlow ? 22 : 28
+    ctx.lineWidth = 28
     ctx.strokeText(value, x, y)
-    ctx.shadowBlur = compactGlow ? 10 : 22
-    ctx.lineWidth = compactGlow ? 13 : 18
+    ctx.shadowBlur = 22
+    ctx.lineWidth = 18
     ctx.strokeText(value, x, y)
     ctx.shadowBlur = 0
     ctx.strokeStyle = coreColor
-    ctx.lineWidth = compactGlow ? 6 : 7
+    ctx.lineWidth = 7
     ctx.strokeText(value, x, y)
   }
   if (vertical) {
