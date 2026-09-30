@@ -71,8 +71,11 @@ await page.waitForTimeout(80)
 await assertFrame('fragile')
 await page.screenshot({ path: path.join(finalDir, '800x450-fragile.png') })
 await page.evaluate(() => window.__cg.resolve('delivered'))
+await page.evaluate(() => window.__cg.resolve('delivered'))
 const fragileRule = await page.evaluate(() => window.__cg.snapshot())
-if (fragileRule.misses !== 1 || fragileRule.delivered !== 0) throw new Error(`fragile edge did not become a miss: ${JSON.stringify(fragileRule)}`)
+if (fragileRule.misses !== 0 || fragileRule.delivered !== 2 || fragileRule.mode !== 'playing') {
+  throw new Error(`Glasshouse pad landings no longer match the written goal: ${JSON.stringify(fragileRule)}`)
+}
 
 await startRoute(6)
 await page.evaluate(() => window.__cg.triggerWindFlip())

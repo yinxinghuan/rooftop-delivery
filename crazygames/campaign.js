@@ -67,7 +67,7 @@ export const ROUTES = [
   },
   {
     id: 7, name: 'Glasshouse', scene: 'glasshouse',
-    blurb: 'Fragile crates only survive the coral center. Land 5, and center once.',
+    blurb: 'Fragile crates. Land 5 parcels, and hit the coral center once.',
     parcels: 6, maxMisses: 2, windMin: 0.15, windMax: 0.92, targetScale: 0.98,
     deliveredGoal: 5, bullseyeGoal: 1, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
     xRange: [-2.2, 2.2], zRange: [-12.8, -8.7], animals: [{ ...HEN }],
@@ -157,6 +157,19 @@ export function passedRoute(route, stats) {
   return stats.delivered >= route.deliveredGoal
     && stats.bullseyes >= route.bullseyeGoal
     && stats.score >= route.scoreGoal
+}
+
+// Glasshouse stays a center challenge: the coral bullseye is required, but a
+// pad or roof-edge landing is still a landing. Rewriting those into misses
+// made the route fail anyone who followed "land 5, and center once."
+export function landingForRoute(route, kind) {
+  if (!route?.fragile) return kind
+  if (kind === 'bullseye' || kind === 'delivered' || kind === 'edge' || kind === 'miss') return kind
+  return 'miss'
+}
+
+export function shouldBeginWindFlip(route, { triggered = false, charging = false, tutorial = false, power = 0 } = {}) {
+  return Boolean(route?.windFlip) && !triggered && charging && !tutorial && power >= 0.12
 }
 
 export function missionLine(route) {
@@ -255,7 +268,7 @@ export function nextMechanic(route, seen) {
     options.push({ id: 'wind-flip', text: 'The wind flips once while you charge. Watch the rooftop flag turn first.' })
   }
   if (route.fragile) {
-    options.push({ id: 'fragile-center', text: 'Fragile crate: only the coral center counts. A pad-edge landing cracks the box.' })
+    options.push({ id: 'fragile-center', text: 'Fragile crate: roof landings count. One crate has to hit the coral center.' })
   }
   if (route.dualTarget) {
     options.push({ id: 'dual-pad', text: 'Two addresses: coral is a high-tip bullseye; the teal ring is a regular delivery.' })

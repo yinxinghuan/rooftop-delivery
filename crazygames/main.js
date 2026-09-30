@@ -8,10 +8,12 @@ import {
   UPGRADE_ICONS,
   clearBonus,
   effectLine,
+  landingForRoute,
   nextMechanic,
   passedRoute,
   progressLine,
   routeById,
+  shouldBeginWindFlip,
   tipValue,
 } from './campaign.js'
 import { loadProfile, writeProfile } from './save.js'
@@ -625,12 +627,7 @@ function resolveThrow(kind) {
     return
   }
   const route = liveRoute()
-  if (route.fragile && kind !== 'bullseye' && kind !== 'miss') {
-    world.crackPackage()
-    pop('Fragile crate cracked', true, 'fragile')
-    run.fragileCrack = true
-    kind = 'miss'
-  }
+  kind = landingForRoute(route, kind)
   award(kind)
   paintHud()
   window.clearTimeout(timer)
@@ -786,7 +783,12 @@ function launchThrow() {
 
 function beginWindFlip() {
   const route = liveRoute()
-  if (!route.windFlip || run.windFlipTriggered || !run.keyboardCharging || run.tutorialIndex !== null) return
+  if (!shouldBeginWindFlip(route, {
+    triggered: run.windFlipTriggered,
+    charging: run.charging,
+    tutorial: run.tutorialIndex !== null,
+    power: (run.aimDy - 24) / 156,
+  })) return
   run.windFlipTriggered = true
   run.windFlipPending = Math.abs(run.wind) < 0.05 ? -0.45 : -run.wind
   world.previewWind(run.windFlipPending)
@@ -819,7 +821,7 @@ function updateAim(dt) {
   if (run.charging || held.has('KeyW') || held.has('ArrowUp')) powerRate += 78
   if (held.has('KeyS') || held.has('ArrowDown')) powerRate -= 90
   if (powerRate) run.aimDy = clamp(run.aimDy + powerRate * dt, 0, 180)
-  if (run.keyboardCharging && (run.aimDy - 24) / 156 >= 0.12) beginWindFlip()
+  beginWindFlip()
   const step = tutorialStep()
   if (step?.action === 'charge' && (run.aimDy - 24) / 156 >= 0.62) {
     run.charging = false
@@ -913,6 +915,7 @@ function onPointerMove(event) {
   if (!pointer || pointer.id !== event.pointerId) return
   run.aimDx = clamp((event.clientX - pointer.x) / scale, -120, 120)
   run.aimDy = clamp((pointer.y - event.clientY) / scale, 0, 180)
+  beginWindFlip()
 }
 
 function onPointerUp(event) {
