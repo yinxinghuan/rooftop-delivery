@@ -71,7 +71,15 @@ button { cursor: pointer; }
   color: var(--ink);
   user-select: none;
   transform-origin: center center;
+  transition: background 220ms ease;
 }
+
+#app[data-district="depot"] { background: linear-gradient(180deg, #81756d 0%, #d7a77d 55%, #f3c78d 100%); }
+#app[data-district="laundry"] { background: linear-gradient(180deg, #537aa5 0%, #77c6ca 56%, #f2ce83 100%); }
+#app[data-district="garden"] { background: linear-gradient(180deg, #687b64 0%, #a8b57d 52%, #d8b778 100%); }
+#app[data-district="neon"] { background: linear-gradient(180deg, #11152e 0%, #28204f 55%, #743b69 100%); }
+#app[data-district="glasshouse"] { background: linear-gradient(180deg, #557a91 0%, #86b9c8 56%, #c5e6e4 100%); }
+#app[data-district="beacon"] { background: linear-gradient(180deg, #08111f 0%, #152c49 58%, #284b61 100%); }
 
 #stage, .cg-canvas, .vignette { position: absolute; inset: 0; }
 .cg-canvas { width: 1600px; height: 900px; display: block; }
@@ -231,6 +239,7 @@ h2 { font-size: 40px; line-height: 0.95; color: var(--ink); }
 .floater.is-miss { color: var(--postal); }
 .floater.is-tip { top: 45%; color: #9a6500; font-size: 34px; animation-delay: 90ms; }
 .floater.is-wind { top: 35%; color: var(--wind); font-size: 34px; animation: cg-wind-turn 800ms ease forwards; }
+.floater.is-fragile { top: 64%; color: var(--postal); font-size: 31px; }
 
 #powerDock {
   position: absolute;

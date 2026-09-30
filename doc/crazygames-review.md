@@ -1,48 +1,54 @@
-# Rooftop Delivery — Crazy Games 游客版审图修正
+# Rooftop Delivery — Crazy Games 第二轮审图修正
 
 ## 本轮范围
 
 - 分支：`cursor/crazygames-guest-7e22`
-- 起点：`83b5cd8`
-- 只修改 Crazy Games 隔离代码、测试证据与文档；没有重写抛掷结算，没有增加路线、广告、内购或账号。
-- 七步教学、八项升级、10 条固定路线和夜间合约继续保留；游戏内文案保持英文。
+- 起点：`fa376ab`
+- 只修改 Crazy Games 隔离代码、QA 与文档；没有修改宿主运行代码，没有重写抛掷结算。
+- 10 条固定路线、七步教学、八项升级与夜间合约全部保留；没有新增路线、广告、内购或账号。
 
-## 画面修正
+## 六套完整街景
 
-- 六个场景现在有不同的程序化楼高、墙色、窗光与屋顶轮廓；每景都有水箱或天线，并分别保留 depot 货运牌/箱堆、laundry 晾衣绳、garden 花箱、neon 霓虹招牌、glasshouse 玻璃棚和 beacon 灯塔灯。
-- 夜间合约按六个现成场景循环，不创建新城。
-- 包裹改为可辨认的纸箱：顶面/侧面十字胶带、正面纸质标签；屋顶接触时压扁回弹并出现小费浮字。
-- 风旗和 laundry 衣物跟随可见风向倾斜；包裹滑出楼沿后持续翻滚经过街道高度，再结算失误。
+本轮不再只换屋顶小物件。每个场景独立配置发件楼后沿、收件楼前沿、街谷宽度、背景楼坐标/数量/高宽比例、建筑和窗光色板、天空、雾与三组灯光。
 
-## 三项玩法修正
+| 场景 | 视觉街谷 | 背景楼 | 主色与静帧识别物 |
+|---|---:|---:|---|
+| depot | 1.4 | 8 | 暖灰黄昏、低宽仓库、装卸牌和箱堆 |
+| laundry | 5.0 | 14 | 高密饱和排楼、彩色晾衣绳 |
+| garden | 6.5 | 8 | 稀疏绿植台地、土色楼和屋顶花箱 |
+| neon | 2.6 | 16 | 深靛夜空、青粉窗光、可读 `NIGHT POST` 发光招牌 |
+| glasshouse | 5.1 | 8 | 冷蓝低宽建筑、玻璃棚和冷色雾 |
+| beacon | 6.3 | 6 | 深色稀疏高楼、亮窗、灯塔与扫光 |
 
-1. Route 7 / Glasshouse：只有珊瑚中心判送达；普通垫圈或屋顶边缘会显示裂纹并计一次 miss。
-2. Route 6 / 9 / 10：每件包裹按住 Space 蓄力时只翻风一次；风旗和 HUD 先转，180ms 后新风才进入预测线与实际弹道。
-3. Route 8 / 10：同时生成珊瑚主圈与风青普通圈；珊瑚圈是高分/高小费 bullseye，普通圈只返回 delivered。
+所有建筑、街道、招牌、灯光和装饰继续只用 Three.js 程序化几何或运行时 CanvasTexture，没有下载模型或图片。
 
-三类规则均复用既有一次性提示卡，没有扩写七步教学。
+## 两项反馈修正
+
+- Route 6 / 9 / 10：翻风静帧改在 180ms 权威风提交后拍摄。旗帜以旗杆为原点左右翻面，HUD 箭头使用相同符号；三关均自动断言 `wind = HUD = flag`，且仍只翻转一次。
+- Route 7：裂纹同时放在箱体朝相机的正面和顶面；`Fragile crate cracked` 浮字下移到前景屋顶，不再遮住远端箱体。普通垫圈仍回归为 `misses=1`、`delivered=0`。
 
 ## 800×450 最终截图
 
-- 装扮后的中局：`_qa/ui/crazygames-final/800x450-mid.png`
+六个场景的截图在 QA harness 中隐藏 HUD，直接验证只看街景仍能辨认：
+
+- `_qa/ui/crazygames-scenes/800x450-depot.png`
+- `_qa/ui/crazygames-scenes/800x450-laundry.png`
+- `_qa/ui/crazygames-scenes/800x450-garden.png`
+- `_qa/ui/crazygames-scenes/800x450-neon.png`
+- `_qa/ui/crazygames-scenes/800x450-glasshouse.png`
+- `_qa/ui/crazygames-scenes/800x450-beacon.png`
 - 风向翻转：`_qa/ui/crazygames-final/800x450-wind-flip.png`
-- 非 depot 花园场景：`_qa/ui/crazygames-final/800x450-garden.png`
+- 易碎箱裂开：`_qa/ui/crazygames-final/800x450-fragile.png`
 
-额外证据：
-
-- 六景逐一截图：`_qa/ui/crazygames-scenes/800x450-{depot,laundry,garden,neon,glasshouse,beacon}.png`
-- 易碎箱展示：`_qa/ui/crazygames-final/800x450-fragile.png`
-- 同视口改前对照：`_qa/ui/crazygames-before/800x450-{mid,neon,garden}.png`
-- 浏览器断言：`_qa/crazygames-review.json`
+机器可读断言：`_qa/crazygames-review.json`。
 
 ## 验证结果
 
-- `npm test`：通过。10 条路线均有非 miss 规划落点；固定路线数仍为 10；夜间合约六景循环通过。
-- Chromium 800×450：无横向/纵向溢出，无页面异常或控制台错误。
-- Route 7 普通垫圈回归：`misses=1`、`delivered=0`。
-- Route 6 翻风回归：`windFlipPending` 先出现，180ms 后权威风向反转；第二次触发不改变风向。
-- Route 8 / 10：均存在互不重叠的副落点，副圈分类为普通 `delivered`。
-- 坠楼回归：包裹在完成前经过 `y=-8.8` 街道高度，最终才返回 `miss`。
+- `npm test`：通过；固定路线仍为 10，夜间合约仍只轮换六个现成场景，10 条路线均有非 miss 规划落点。
+- Chromium 800×450：六景及两项反馈图无溢出、页面异常或控制台错误。
+- 六景视觉街谷值和建筑主色均唯一；背景楼数量/位置数据分别来自六套配置。
+- Route 6 / 9 / 10：翻转完成后权威风、HUD 箭头和旗帜方向逐关一致。
+- Route 7 普通垫圈：`misses=1`、`delivered=0`；结果浮字与箱体不重叠，顶面裂纹可见。
 
 ## 宿主 SHA-256（改前 = 改后）
 
@@ -58,6 +64,7 @@
 
 ## 视觉 QA
 
-- Hierarchy 4/5；Coherence 4/5；Readability 4/5；Game feel 4/5；Asset quality 4/5；Responsive UX 5/5；Polish 4/5。平均 4.14，无低于 3 的项目。
-- 第一轮主要问题是 glasshouse 透明度不足、裂箱截图中文字遮挡主体、风翻转静帧不够明确。复验中提高玻璃棚框架/面板可见度，最终审核截图改用 HUD、近景旗帜和 `Wind turning` 同时出现的风翻转状态。
-- `comprehension unverified`：机械路径和信息可见性已验证，但仍没有全新真人复述三问合同的证据。
+- Hierarchy 4/5；Coherence 5/5；Readability 4/5；Game feel 4/5；Asset quality 5/5；Responsive UX 5/5；Polish 4/5。平均 4.43，无低于 3 的项目。
+- P1 “六景仍像同一条街”已通过整街区分组、独立天空/灯光和隐藏 HUD 的六张复拍关闭。
+- P1 “翻风静帧方向未提交”和“裂箱浮字遮挡”已用最终静帧与浏览器断言关闭。
+- `comprehension unverified`：本轮只改视觉辨识与反馈证据，仍没有全新真人复述玩法三问合同的证据。

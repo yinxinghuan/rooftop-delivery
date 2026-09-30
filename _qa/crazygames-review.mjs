@@ -76,7 +76,16 @@ if (fragileRule.misses !== 1 || fragileRule.delivered !== 0) throw new Error(`fr
 
 await startRoute(6)
 await page.evaluate(() => window.__cg.triggerWindFlip())
-await page.waitForTimeout(120)
+await page.waitForTimeout(240)
+const windFrame = await page.evaluate(() => {
+  const snapshot = window.__cg.snapshot()
+  const transform = document.querySelector('#windArrow').style.transform
+  return { ...snapshot, arrowDirection: transform.includes('-1') ? -1 : 1 }
+})
+if (windFrame.windFlipPending !== null) throw new Error('wind screenshot was captured before the new wind committed')
+if (Math.sign(windFrame.wind) !== windFrame.windPropDirection || Math.sign(windFrame.wind) !== windFrame.arrowDirection) {
+  throw new Error(`wind screenshot directions disagree: ${JSON.stringify(windFrame)}`)
+}
 await assertFrame('wind-flip')
 await page.screenshot({ path: path.join(finalDir, '800x450-wind-flip.png') })
 
@@ -89,13 +98,18 @@ await page.keyboard.up('Space')
 
 const routeForScene = { depot: 1, laundry: 2, garden: 5, neon: 6, glasshouse: 7, beacon: 8 }
 const scenes = []
+const streetOnlyStyle = await page.addStyleTag({ content: '#hud,#powerDock,#hintCard{display:none!important}' })
 for (const [scene, route] of Object.entries(routeForScene)) {
   await startRoute(route)
+  await page.waitForTimeout(120)
   const snapshot = await page.evaluate(() => window.__cg.snapshot())
   if (snapshot.scene !== scene) throw new Error(`route ${route} expected ${scene}, got ${snapshot.scene}`)
   await page.screenshot({ path: path.join(sceneDir, `800x450-${scene}.png`) })
-  scenes.push({ scene, route, target: snapshot.target })
+  scenes.push({ scene, route, target: snapshot.target, district: snapshot.district })
 }
+await streetOnlyStyle.evaluate((node) => node.remove())
+if (new Set(scenes.map(({ district }) => district.palette)).size !== 6) throw new Error('district palettes are not unique')
+if (new Set(scenes.map(({ district }) => district.gap)).size !== 6) throw new Error('district street gaps are not unique')
 
 await startRoute(6)
 const beforeFlip = await page.evaluate(() => window.__cg.snapshot().wind)
@@ -110,6 +124,33 @@ await page.waitForTimeout(220)
 const afterSecondAttempt = await page.evaluate(() => window.__cg.snapshot())
 if (afterSecondAttempt.wind !== afterFlip.wind) throw new Error('wind reversed more than once in one parcel')
 
+const windDirectionChecks = [{
+  route: 6,
+  wind: windFrame.wind,
+  hud: windFrame.arrowDirection,
+  flag: windFrame.windPropDirection,
+}]
+for (const route of [9, 10]) {
+  await startRoute(route)
+  await page.evaluate(() => window.__cg.triggerWindFlip())
+  await page.waitForTimeout(240)
+  const check = await page.evaluate(() => {
+    const snapshot = window.__cg.snapshot()
+    const transform = document.querySelector('#windArrow').style.transform
+    return {
+      route: snapshot.routeId,
+      wind: snapshot.wind,
+      pending: snapshot.windFlipPending,
+      hud: transform.includes('-1') ? -1 : 1,
+      flag: snapshot.windPropDirection,
+    }
+  })
+  if (check.pending !== null || Math.sign(check.wind) !== check.hud || Math.sign(check.wind) !== check.flag) {
+    throw new Error(`route ${route} wind directions disagree: ${JSON.stringify(check)}`)
+  }
+  windDirectionChecks.push(check)
+}
+
 await startRoute(8)
 const route8 = await page.evaluate(() => window.__cg.snapshot())
 if (!route8.target.secondary) throw new Error('route 8 secondary pad missing')
@@ -117,7 +158,7 @@ await startRoute(10)
 const route10 = await page.evaluate(() => window.__cg.snapshot())
 if (!route10.target.secondary) throw new Error('route 10 secondary pad missing')
 
-const report = { viewport: '800x450', errors, scenes, fragileRule: { misses: fragileRule.misses, delivered: fragileRule.delivered }, windFlip: { beforeFlip, duringFlip: duringFlip.windFlipPending, afterFlip: afterFlip.wind }, dualTargets: { route8: route8.target, route10: route10.target } }
+const report = { viewport: '800x450', errors, scenes, fragileRule: { misses: fragileRule.misses, delivered: fragileRule.delivered }, windFlip: { beforeFlip, duringFlip: duringFlip.windFlipPending, afterFlip: afterFlip.wind, directionChecks: windDirectionChecks }, dualTargets: { route8: route8.target, route10: route10.target } }
 await fs.writeFile(path.join(root, '_qa', 'crazygames-review.json'), `${JSON.stringify(report, null, 2)}\n`)
 await browser.close()
 if (errors.length) throw new Error(errors.join('\n'))

@@ -627,7 +627,7 @@ function resolveThrow(kind) {
   const route = liveRoute()
   if (route.fragile && kind !== 'bullseye' && kind !== 'miss') {
     world.crackPackage()
-    pop('Fragile crate cracked', true)
+    pop('Fragile crate cracked', true, 'fragile')
     run.fragileCrack = true
     kind = 'miss'
   }
@@ -1038,6 +1038,8 @@ if (new URLSearchParams(location.search).has('playtest')) {
         tutorialAction: tutorialStep()?.action || null,
         target: { ...world.target },
         scene: world.sceneName,
+        district: world.districtMetrics,
+        windPropDirection: world.windPropDirection,
         actors: world.actors.map((actor) => ({ type: actor.type, x: actor.x, z: actor.z })),
         hint: $('#hintCard').hidden ? '' : $('#hintText').textContent,
         tips: profile.tips,
@@ -1064,7 +1066,7 @@ if (new URLSearchParams(location.search).has('playtest')) {
     },
     showCrack() {
       world.previewLanding({ cracked: true })
-      pop('Fragile crate cracked', true)
+      pop('Fragile crate cracked', true, 'fragile')
     },
     showLanding({ secondary = false } = {}) {
       world.previewLanding({ secondary })

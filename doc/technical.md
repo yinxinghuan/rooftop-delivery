@@ -78,7 +78,9 @@ Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`
 - `crazygames/campaign.js` 保持 10 条固定路线、七步教学、八项升级和可持续夜间合约。路线 6/9/10 使用 `windFlip`，路线 7 使用 `fragile`，路线 8/10 使用 `dualTarget`；`nextMechanic()` 将三类规则接入既有一次性提示卡。夜间合约按 depot → laundry → garden → neon → glasshouse → beacon 循环场景与对应箱体皮肤。
 - `crazygames/aim.js` 保留原有积分、碰撞、弹跳、摩擦与结算结构；`landingKind()` 只增加可选副落点判定，副落点永远返回普通 `delivered`。屋顶外坠落阈值延长到 `y=-11.5`，让包裹以原角速度穿过街道高度后再结算 `miss`。
 - `crazygames/main.js` 在每件包裹的键盘蓄力状态记录一次性翻风。风旗/HUD 先读 `windFlipPending`，180ms 后才写入权威 `run.wind` 并重算预测线；提前松开会排队等待翻转完成，不会用旧风发射。第 7 关把非 bullseye 的屋顶落点转为失误并显示裂箱，第 8/10 关生成左右分离的主副落点。
-- `crazygames/world.js` 用 Three.js 基础几何为六景生成不同楼高、墙色、窗光、水箱/天线与专属物件；公共风旗和 laundry 衣物按可见风向倾斜。纸箱使用两条相交胶带与 Canvas 标签，首次接触屋顶触发 380ms 压扁/回弹，裂纹为箱体前表面的 Line 几何。
+- `crazygames/world.js` 用 Three.js 基础几何为六景生成不同楼高、墙色、窗光、水箱/天线与专属物件；公共风旗和 laundry 衣物按可见风向倾斜。纸箱使用两条相交胶带与 Canvas 标签，首次接触屋顶触发 380ms 压扁/回弹，裂纹使用箱体正面与顶面的深色 Plane 几何。
+- 第二轮审图将前景发件楼、收件楼、街道和背景楼阵也移入六个独立场景组。`DISTRICTS` 分别配置发件楼深度/后沿、收件楼深度/前沿、背景楼坐标与数量、街道宽度、建筑/窗光色板、雾与三组灯光；物理落点边界、投掷积分器和 10 条路线数据不变。neon 的 `NIGHT POST` 使用运行时 CanvasTexture 与两盏程序化点光源，不依赖外部模型或图片。
+- 风旗几何以旗杆为缩放原点，`scale.x` 的正负直接表示当前可见风向；HUD 箭头同样以 `scaleX(±1)` 表示方向。QA 在 180ms 翻转提交后分别检查路线 6、9、10 的权威风、HUD 箭头和旗帜方向相同。易碎箱改用正面与顶面的厚 Plane 裂纹，结果浮字使用独立 `is-fragile` 位置避免遮挡箱体。
 - `_qa/crazygames-rules.mjs` 检查路线数量/规则标记、夜间六景循环、副落点分类、坠街可见时段和 10 条路线的规划落点；`_qa/crazygames-review.mjs` 在真实 Chromium 中检查 800×450 无裁切、六景切换、易碎失误、翻风视觉先行/单次限制、双落点与控制台错误，并生成最终截图。
 - `?playtest=1` 仅为本地 QA 暴露 `window.__cg` 状态与展示钩子；普通游客入口不创建该对象。
 

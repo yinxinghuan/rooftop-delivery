@@ -22,7 +22,8 @@ export function createWorld(container) {
   renderer.domElement.className = 'cg-canvas'
   container.appendChild(renderer.domElement)
 
-  scene.add(new THREE.HemisphereLight(0xffdfba, 0x3b3d57, 2.45))
+  const hemi = new THREE.HemisphereLight(0xffdfba, 0x3b3d57, 2.45)
+  scene.add(hemi)
   const sun = new THREE.DirectionalLight(0xffc48f, 4.2)
   sun.position.set(-7, 14, 8)
   sun.castShadow = true
@@ -36,19 +37,6 @@ export function createWorld(container) {
   rim.position.set(10, 6, -15)
   scene.add(rim)
 
-  const city = new THREE.Group()
-  scene.add(city)
-  const roofMaterial = new THREE.MeshStandardMaterial({ color: 0xe9d7b7, roughness: 0.93, metalness: 0.02 })
-
-  const startBuilding = makeBuilding(9.2, 8.5, 9.5, 0x625a70)
-  startBuilding.position.set(0, -4.25, 5)
-  city.add(startBuilding)
-  const startRoof = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.22, 9.7), roofMaterial)
-  startRoof.position.set(0, 0.38, 5)
-  startRoof.receiveShadow = true
-  city.add(startRoof)
-  addRoofDetails(city)
-  addBackgroundCity(scene, city)
   const clouds = addClouds(scene)
 
   const targetGroup = createTarget()
@@ -108,6 +96,25 @@ export function createWorld(container) {
   let bob = true
   let impactFx = 0
   let windVisualOverride = null
+
+  function applyAtmosphere(name) {
+    const spec = DISTRICTS[name] || DISTRICTS.depot
+    scene.fog.color.setHex(spec.fog)
+    scene.fog.density = spec.fogDensity
+    hemi.color.setHex(spec.hemiSky)
+    hemi.groundColor.setHex(spec.hemiGround)
+    hemi.intensity = spec.hemiIntensity
+    sun.color.setHex(spec.sun)
+    sun.intensity = spec.sunIntensity
+    rim.color.setHex(spec.rim)
+    rim.intensity = spec.rimIntensity
+    clouds.forEach((cloud) => cloud.children.forEach((puff) => {
+      puff.material.color.setHex(spec.cloud)
+      puff.material.opacity = spec.cloudOpacity
+    }))
+    const app = container.closest('#app')
+    if (app) app.dataset.district = name
+  }
 
   function placeTarget(x, z, scale, secondary = null) {
     baseX = x
@@ -345,6 +352,7 @@ export function createWorld(container) {
     setScene(name) {
       sceneName = scenes[name] ? name : 'depot'
       Object.entries(scenes).forEach(([key, group]) => { group.visible = key === sceneName })
+      applyAtmosphere(sceneName)
     },
     setSkin(parcel) {
       const box = packageGroup.children.find((child) => child.userData.packagePart === 'box')
@@ -399,6 +407,21 @@ export function createWorld(container) {
     },
     get flying() { return Boolean(flight) },
     get sceneName() { return sceneName },
+    get districtMetrics() {
+      const spec = DISTRICTS[sceneName]
+      return {
+        gap: Number((spec.startBack - spec.targetFront).toFixed(2)),
+        skylineCount: spec.skyline.length,
+        palette: spec.body,
+      }
+    },
+    get windPropDirection() {
+      let direction = 0
+      scenes[sceneName]?.traverse((child) => {
+        if (child.userData.windResponsive === 'flag') direction = Math.sign(child.scale.x)
+      })
+      return direction
+    },
     pulseTarget() {
       targetGroup.children.forEach((child) => {
         if (child.geometry?.type?.includes('Ring')) child.scale.setScalar(1.16)
@@ -476,38 +499,53 @@ function makeBuilding(width, height, depth, color, options = {}) {
   return group
 }
 
-function addRoofDetails(city) {
-  const dark = new THREE.MeshStandardMaterial({ color: 0x4a465d, roughness: 0.76 })
-  const railMat = new THREE.MeshStandardMaterial({ color: 0x595265, roughness: 0.68 })
-  for (const x of [-4.05, 4.05]) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.58, 7.2), railMat)
-    rail.position.set(x, 0.77, 5)
-    city.add(rail)
-  }
-}
+function addDistrictEnvironment(group, kind) {
+  const spec = DISTRICTS[kind]
+  const start = makeBuilding(9.2, spec.startHeight, spec.startDepth, spec.startBody, {
+    windowColor: spec.windows,
+    windowOpacity: spec.windowOpacity,
+  })
+  start.position.set(0, 0.28 - spec.startHeight / 2, spec.startZ)
+  group.add(start)
+  sceneBox(group, [9.4, 0.22, spec.startDepth + 0.2], spec.startRoof, [0, 0.39, spec.startZ], { castShadow: false })
 
-function addBackgroundCity(scene, city) {
-  const palette = [0x514e69, 0x5d566d, 0x766575, 0x4b5369, 0x806a75]
-  for (let i = 0; i < 22; i += 1) {
-    const side = i % 2 === 0 ? -1 : 1
-    const width = 2.8 + (i % 4) * 0.6
-    const depth = 3.6 + (i % 5) * 0.7
-    const height = 4 + (i % 6) * 1.4
-    const building = makeBuilding(width, height, depth, palette[i % palette.length])
-    building.position.set(side * (7.4 + (i % 5) * 1.5), -height / 2 - (i % 3) * 0.4, -28 + (i % 11) * 3.1)
-    city.add(building)
-  }
+  const railColor = spec.rail
+  const railDepth = Math.max(4.8, spec.startDepth - 1.6)
+  for (const x of [-4.05, 4.05]) sceneBox(group, [0.1, 0.58, railDepth], railColor, [x, 0.77, spec.startZ])
+
+  spec.skyline.forEach(([x, z, width, height, depth, colorIndex, topOffset = 0], index) => {
+    const building = makeBuilding(width, height, depth, spec.skylinePalette[colorIndex % spec.skylinePalette.length], {
+      windowColor: spec.skylineWindows[index % spec.skylineWindows.length],
+      windowOpacity: spec.windowOpacity,
+    })
+    building.position.set(x, topOffset - height / 2, z)
+    group.add(building)
+    if (kind === 'garden' && index % 3 === 0) {
+      const planter = sceneBox(group, [Math.min(2.2, width * 0.62), 0.3, 0.8], 0x9c5d3e, [x, topOffset + 0.2, z + depth * 0.25])
+      planter.castShadow = false
+      for (const offset of [-0.48, 0, 0.48]) {
+        const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), sceneMaterial(index % 2 ? 0x5c944f : 0x3d7948))
+        crown.position.set(x + offset, topOffset + 0.55, z + depth * 0.25)
+        group.add(crown)
+      }
+    }
+    if (kind === 'glasshouse' && index % 2 === 0) {
+      const skylight = sceneBox(group, [Math.min(2.5, width * 0.55), 0.42, 1.2], 0x8ed9ee, [x, topOffset + 0.23, z], { opacity: 0.42, castShadow: false })
+      skylight.rotation.z = index % 4 ? 0.12 : -0.12
+    }
+  })
+
   const street = new THREE.Mesh(
-    new THREE.PlaneGeometry(8, 52),
-    new THREE.MeshStandardMaterial({ color: 0x3e3d50, roughness: 1 }),
+    new THREE.PlaneGeometry(spec.streetWidth, 56),
+    new THREE.MeshStandardMaterial({ color: spec.street, roughness: 1 }),
   )
   street.rotation.x = -Math.PI / 2
   street.position.set(0, -8.8, -8)
-  scene.add(street)
-  for (let i = 0; i < 9; i += 1) {
-    const light = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.01, 1.3), new THREE.MeshBasicMaterial({ color: 0xf7d58b }))
-    light.position.set(0, -8.76, 8 - i * 4.6)
-    scene.add(light)
+  group.add(street)
+  for (let i = 0; i < 10; i += 1) {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(spec.stripeWidth, 0.01, spec.stripeLength), new THREE.MeshBasicMaterial({ color: spec.streetStripe }))
+    stripe.position.set(0, -8.76, 10 - i * 4.8)
+    group.add(stripe)
   }
 }
 
@@ -602,17 +640,34 @@ function createPackage() {
   label.position.set(0.19, 0.015, 0.296)
   label.userData.packagePart = 'label'
   group.add(label)
-  const crackMaterial = new THREE.MeshBasicMaterial({ color: 0x27283a, side: THREE.DoubleSide })
-  const crackPoints = [
-    [[-0.28, 0.2], [-0.08, 0.04], [-0.22, -0.18]],
-    [[0.02, 0.24], [0.12, 0.06], [0.29, -0.12]],
-  ]
-  crackPoints.forEach((points) => {
-    const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0.3)))
-    const line = new THREE.Line(geometry, crackMaterial)
-    line.visible = false
-    line.userData.packageCrack = true
-    group.add(line)
+  const crackMaterial = new THREE.MeshBasicMaterial({ color: 0x351821, side: THREE.DoubleSide, depthTest: false })
+  ;[
+    [-0.22, 0.15, 0.075, 0.34, -0.72],
+    [-0.08, -0.02, 0.065, 0.28, 0.58],
+    [0.10, 0.14, 0.072, 0.31, 0.66],
+    [0.23, -0.05, 0.065, 0.29, -0.62],
+  ].forEach(([x, y, width, height, rotation]) => {
+    const crack = new THREE.Mesh(new THREE.PlaneGeometry(width, height), crackMaterial)
+    crack.position.set(x, y, 0.302)
+    crack.rotation.z = rotation
+    crack.visible = false
+    crack.renderOrder = 5
+    crack.userData.packageCrack = true
+    group.add(crack)
+  })
+  ;[
+    [-0.20, -0.10, 0.075, 0.36, -0.78],
+    [0.02, 0.03, 0.07, 0.32, 0.68],
+    [0.22, -0.08, 0.065, 0.27, -0.48],
+  ].forEach(([x, z, width, length, rotation]) => {
+    const crack = new THREE.Mesh(new THREE.PlaneGeometry(width, length), crackMaterial)
+    crack.position.set(x, 0.316, z)
+    crack.rotation.x = -Math.PI / 2
+    crack.rotation.z = rotation
+    crack.visible = false
+    crack.renderOrder = 5
+    crack.userData.packageCrack = true
+    group.add(crack)
   })
   group.position.set(0, 1.15, 2.6)
   return group
@@ -639,6 +694,31 @@ function makeLabelTexture(text = 'RD / 01', accent = '#f05d4e') {
   return texture
 }
 
+function makeNeonSignTexture() {
+  const canvas = document.createElement('canvas')
+  canvas.width = 768
+  canvas.height = 224
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.shadowBlur = 28
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = '900 92px Arial Black, Arial, sans-serif'
+  ctx.strokeStyle = '#123c49'
+  ctx.lineWidth = 19
+  ctx.strokeText('NIGHT POST', 384, 112)
+  ctx.shadowColor = '#35f5e4'
+  ctx.strokeStyle = '#35f5e4'
+  ctx.lineWidth = 10
+  ctx.strokeText('NIGHT POST', 384, 112)
+  ctx.shadowColor = '#ff3f9b'
+  ctx.fillStyle = '#fff5de'
+  ctx.fillText('NIGHT POST', 384, 112)
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
+}
+
 function createWindStreaks() {
   const group = new THREE.Group()
   for (let i = 0; i < 9; i += 1) {
@@ -656,6 +736,8 @@ function createWindStreaks() {
 function sceneMaterial(color, options = {}) {
   return new THREE.MeshStandardMaterial({
     color,
+    emissive: options.emissive ?? 0x000000,
+    emissiveIntensity: options.emissiveIntensity ?? 0,
     roughness: options.roughness ?? 0.82,
     metalness: options.metalness ?? 0.02,
     transparent: (options.opacity ?? 1) < 1,
@@ -673,41 +755,107 @@ function sceneBox(group, size, color, position, options = {}) {
 }
 
 const DISTRICTS = {
-  depot: { height: 8.0, body: 0x8c6258, roof: 0xe8c99b, windows: 0xffd27a, utility: 'tank' },
-  laundry: { height: 10.6, body: 0x587792, roof: 0xd8e7e6, windows: 0xffedb6, utility: 'antenna' },
-  garden: { height: 7.1, body: 0x5f765c, roof: 0xd7cfaa, windows: 0xffd892, utility: 'tank' },
-  neon: { height: 12.1, body: 0x493f68, roof: 0x756a8a, windows: 0x79d7d2, utility: 'antenna' },
-  glasshouse: { height: 9.2, body: 0x5d6f76, roof: 0xe8dfcf, windows: 0xc4eeff, utility: 'tank' },
-  beacon: { height: 13.0, body: 0x30384f, roof: 0x596078, windows: 0xf2c14e, utility: 'antenna' },
+  depot: {
+    height: 7.4, body: 0x9a7154, roof: 0xe7c88f, windows: 0xffd27a, windowOpacity: 0.62, utility: 'tank',
+    startHeight: 6.8, startDepth: 12, startZ: 4.2, startBack: -1.8, startBody: 0x776c60, startRoof: 0xd8c39c,
+    targetDepth: 13, targetZ: -9.7, targetFront: -3.2, rail: 0x5e574f,
+    street: 0x514941, streetWidth: 7.2, streetStripe: 0xe9b75d, stripeWidth: 0.11, stripeLength: 1.1,
+    skylinePalette: [0x8b7462, 0x72665c, 0xa27e5f, 0x665f59], skylineWindows: [0xffd892, 0xf4bd69],
+    skyline: [[-8,-22,5.8,4.2,7,0],[8.5,-20,6.4,5.1,8,2],[-12,-14,7.2,3.6,6,1],[13,-12,6.8,4.5,7,0],[-9,-31,8,5.4,8,3],[10,-30,7.2,6.1,7,1],[-15,-25,5.8,4.1,6,2],[16,-23,7.5,5.2,8,0]],
+    fog: 0xb08a73, fogDensity: 0.017, hemiSky: 0xffd59f, hemiGround: 0x5d5147, hemiIntensity: 2.7,
+    sun: 0xffc278, sunIntensity: 4.5, rim: 0xf3a65f, rimIntensity: 1.2, cloud: 0xffd9b5, cloudOpacity: 0.2,
+  },
+  laundry: {
+    height: 10.2, body: 0x2f83a0, roof: 0xd8eef0, windows: 0xffef9b, windowOpacity: 0.9, utility: 'antenna',
+    startHeight: 9.3, startDepth: 9, startZ: 5.3, startBack: 0.8, startBody: 0xd85b57, startRoof: 0xf2d78f,
+    targetDepth: 14, targetZ: -11.2, targetFront: -4.2, rail: 0x354d67,
+    street: 0x356777, streetWidth: 10.5, streetStripe: 0xffe875, stripeWidth: 0.13, stripeLength: 0.85,
+    skylinePalette: [0xe05d55, 0x2a9d9f, 0xf0b44c, 0x5276b8, 0xd65386], skylineWindows: [0xfff3ad, 0xbdf5f0],
+    skyline: [[-6.5,-8,3.2,8.5,4,0],[6.7,-9,3.1,6.2,4,2],[-8,-13,3.5,10.5,4.5,3],[8.2,-14,3.4,9.2,4,4],[-10,-18,3.2,6.8,4,1],[10.3,-19,3.3,11.5,4.3,0],[-7,-24,3.6,12.4,5,2],[7.2,-25,3.3,7.4,4,1],[-11,-29,3.4,9.6,5,4],[11.4,-30,3.2,13.2,4,3],[-14,-12,3.6,7.2,5,2],[14.2,-16,3.4,10.4,4,1],[-16,-23,3.2,12.6,4,0],[16,-27,3.5,8.1,5,4]],
+    fog: 0x7796a3, fogDensity: 0.014, hemiSky: 0xbfeaf0, hemiGround: 0x345d68, hemiIntensity: 2.8,
+    sun: 0xffd68b, sunIntensity: 4.2, rim: 0x44d7d2, rimIntensity: 2.1, cloud: 0xd7fbff, cloudOpacity: 0.18,
+  },
+  garden: {
+    height: 6.5, body: 0x64764b, roof: 0xd6c18c, windows: 0xffd38c, windowOpacity: 0.7, utility: 'tank',
+    startHeight: 5.8, startDepth: 8.4, startZ: 5.4, startBack: 1.2, startBody: 0x8b694c, startRoof: 0xc9b178,
+    targetDepth: 13, targetZ: -11.8, targetFront: -5.3, rail: 0x594a39,
+    street: 0x4d5742, streetWidth: 12, streetStripe: 0xd7b66c, stripeWidth: 0.16, stripeLength: 1.5,
+    skylinePalette: [0x6c7b50, 0xa66d45, 0x556b45, 0xc08a55], skylineWindows: [0xffd18b, 0xe8efad],
+    skyline: [[-9,-11,5.8,4.2,5.8,0],[10,-14,5.2,5.1,5,1],[-14,-20,6.2,3.8,6.5,3],[15,-23,6.8,6.4,6,2],[-8,-29,7.4,5.5,7,1],[9,-32,6.2,4.4,6,0],[-17,-31,5.8,7.2,5,2],[18,-12,6.5,3.5,6,3]],
+    fog: 0x85936c, fogDensity: 0.013, hemiSky: 0xf2d39b, hemiGround: 0x4a583a, hemiIntensity: 2.6,
+    sun: 0xf2bb75, sunIntensity: 4.1, rim: 0x8fcf72, rimIntensity: 1.7, cloud: 0xf5ddb1, cloudOpacity: 0.16,
+  },
+  neon: {
+    height: 12.4, body: 0x211d42, roof: 0x4b3568, windows: 0x3cf4e4, windowOpacity: 0.94, utility: 'antenna',
+    startHeight: 12.2, startDepth: 11, startZ: 4.5, startBack: -1, startBody: 0x171a35, startRoof: 0x3f2f5d,
+    targetDepth: 13.6, targetZ: -10.4, targetFront: -3.6, rail: 0x1b1830,
+    street: 0x11182a, streetWidth: 8.2, streetStripe: 0xff3f9b, stripeWidth: 0.09, stripeLength: 1.8,
+    skylinePalette: [0x161a35, 0x24204b, 0x321d4f, 0x123749], skylineWindows: [0x3cf4e4, 0xff45aa, 0x8d6cff],
+    skyline: [[-6.8,-8,3.4,13.5,4,0],[6.9,-9,3.1,9.2,4,3],[-8.2,-13,3.8,16.2,4.6,2],[8.4,-14,3.2,14.3,4,1],[-9.7,-18,3.2,10.8,4,3],[9.9,-19,3.5,17.5,4.2,0],[-7,-24,3.2,18.4,4.3,1],[7.4,-25,3.4,12.7,4,2],[-11.2,-28,3.2,15.1,4.2,0],[11.4,-30,3.4,19.2,4,3],[-13.5,-12,3.2,11.6,4,2],[13.8,-16,3.3,16.8,4.4,1],[-15.5,-22,3.1,18.8,4,3],[15.8,-26,3.5,13.9,4.5,0],[-18,-31,3.2,20.2,4,2],[18.2,-10,3.4,12.4,4,1]],
+    fog: 0x211a45, fogDensity: 0.02, hemiSky: 0x403267, hemiGround: 0x101527, hemiIntensity: 1.65,
+    sun: 0x8c61ff, sunIntensity: 2.2, rim: 0x18f5e2, rimIntensity: 3.5, cloud: 0x71518f, cloudOpacity: 0.08,
+  },
+  glasshouse: {
+    height: 8.8, body: 0x4e7482, roof: 0xd8edf2, windows: 0xc8f5ff, windowOpacity: 0.82, utility: 'tank',
+    startHeight: 7.7, startDepth: 9.5, startZ: 4.75, startBack: 0, startBody: 0x496675, startRoof: 0xb8d4db,
+    targetDepth: 12.8, targetZ: -11.5, targetFront: -5.1, rail: 0x304a57,
+    street: 0x314b5a, streetWidth: 10.8, streetStripe: 0xb8edf5, stripeWidth: 0.12, stripeLength: 1.2,
+    skylinePalette: [0x557b88, 0x6c94a0, 0x3f6474, 0x789ca4], skylineWindows: [0xc9f7ff, 0x94ddea],
+    skyline: [[-9,-12,7.5,5.1,7,0],[10,-15,8.5,4.2,8,1],[-15,-21,7.2,7.6,6,2],[16,-24,9.2,6.2,8,3],[-9,-30,8.4,8.4,7,1],[10,-33,7.8,5.4,7,0],[-18,-11,7.4,4.5,7,3],[19,-18,8.6,7.1,8,2]],
+    fog: 0x7eaab8, fogDensity: 0.018, hemiSky: 0xd8f8ff, hemiGround: 0x365866, hemiIntensity: 2.55,
+    sun: 0xc7efff, sunIntensity: 3.5, rim: 0x6fe4ff, rimIntensity: 2.4, cloud: 0xe6fbff, cloudOpacity: 0.14,
+  },
+  beacon: {
+    height: 14.0, body: 0x18243b, roof: 0x2b3a55, windows: 0xffca55, windowOpacity: 0.92, utility: 'antenna',
+    startHeight: 13.5, startDepth: 7.4, startZ: 5.5, startBack: 1.8, startBody: 0x131d30, startRoof: 0x26344d,
+    targetDepth: 14, targetZ: -11.5, targetFront: -4.5, rail: 0x101827,
+    street: 0x0a1220, streetWidth: 13.4, streetStripe: 0xf2c14e, stripeWidth: 0.08, stripeLength: 2.2,
+    skylinePalette: [0x101a2d, 0x17263c, 0x213049], skylineWindows: [0xffc74f, 0x5f88a8],
+    skyline: [[-10,-13,4.8,15.5,5,0],[11,-17,5.2,10.8,5,1],[-17,-24,4.6,18.2,5,2],[18,-29,5.4,13.4,6,0],[-10,-34,4.8,20.5,5,1],[13,-38,5.2,16.1,5,2]],
+    fog: 0x15223a, fogDensity: 0.022, hemiSky: 0x233456, hemiGround: 0x09111f, hemiIntensity: 1.35,
+    sun: 0x60749a, sunIntensity: 1.5, rim: 0x6aa9cf, rimIntensity: 2.1, cloud: 0x304665, cloudOpacity: 0.07,
+  },
 }
 
 function addDistrictShell(group, kind) {
   const spec = DISTRICTS[kind]
-  const building = makeBuilding(9.2, spec.height, 14.5, spec.body, { windowColor: spec.windows })
-  building.position.set(0, 0.28 - spec.height / 2, -11)
+  const building = makeBuilding(9.2, spec.height, spec.targetDepth, spec.body, { windowColor: spec.windows, windowOpacity: spec.windowOpacity })
+  building.position.set(0, 0.28 - spec.height / 2, spec.targetZ)
   group.add(building)
-  const roof = sceneBox(group, [9.4, 0.22, 14.7], spec.roof, [0, 0.38, -11], { castShadow: false })
+  const roof = sceneBox(group, [9.4, 0.22, spec.targetDepth + 0.2], spec.roof, [0, 0.38, spec.targetZ], { castShadow: false })
   roof.receiveShadow = true
+
+  if (kind === 'depot') sceneBox(group, [2.4, 4.2, 5.2], 0x6d6257, [-5.8, -1.82, -8.2], { castShadow: false })
+  if (kind === 'laundry') {
+    sceneBox(group, [2.2, 7.4, 4.5], 0xe05d55, [-5.45, -3.42, -12.5], { castShadow: false })
+    sceneBox(group, [1.8, 5.6, 4], 0xf0b44c, [5.25, -2.52, -9.2], { castShadow: false })
+  }
+  if (kind === 'garden') sceneBox(group, [3.6, 3.3, 4.8], 0xa66d45, [5.8, -1.37, -12.8], { castShadow: false })
+  if (kind === 'neon') sceneBox(group, [2.3, 9.6, 4.2], 0x123749, [-5.6, -4.52, -11.2], { castShadow: false })
+  if (kind === 'glasshouse') sceneBox(group, [3.8, 4.6, 5.5], 0x6c94a0, [-5.9, -2.02, -12.6], { castShadow: false })
+  if (kind === 'beacon') sceneBox(group, [2.8, 11.2, 4.8], 0x101a2d, [-6.1, -5.32, -13.2], { castShadow: false })
 
   if (spec.utility === 'tank') {
     const tank = new THREE.Mesh(
       new THREE.CylinderGeometry(0.62, 0.68, 1.15, 12),
       sceneMaterial(kind === 'garden' ? 0xc98955 : kind === 'glasshouse' ? 0x6b8e95 : 0xd77858),
     )
-    tank.position.set(-3.35, 1.12, -15.6)
+    tank.position.set(-3.35, 1.12, spec.targetZ - spec.targetDepth / 2 + 1.35)
     tank.castShadow = true
     group.add(tank)
-    sceneBox(group, [1.05, 0.12, 1.05], 0x39384a, [-3.35, 0.58, -15.6])
+    sceneBox(group, [1.05, 0.12, 1.05], 0x39384a, [-3.35, 0.58, spec.targetZ - spec.targetDepth / 2 + 1.35])
   } else {
-    sceneBox(group, [0.1, 2.3, 0.1], 0x39384a, [-3.4, 1.58, -15.65])
-    sceneBox(group, [1.35, 0.08, 0.08], spec.windows, [-3.4, 2.25, -15.65], { castShadow: false })
-    sceneBox(group, [0.08, 0.08, 1.1], spec.windows, [-3.4, 2.25, -15.65], { castShadow: false })
+    const antennaZ = spec.targetZ - spec.targetDepth / 2 + 1.25
+    sceneBox(group, [0.1, 2.3, 0.1], 0x39384a, [-3.4, 1.58, antennaZ])
+    sceneBox(group, [1.35, 0.08, 0.08], spec.windows, [-3.4, 2.25, antennaZ], { castShadow: false })
+    sceneBox(group, [0.08, 0.08, 1.1], spec.windows, [-3.4, 2.25, antennaZ], { castShadow: false })
   }
 
-  const pole = sceneBox(group, [0.08, 2.1, 0.08], 0x353544, [3.65, 1.48, -7.05])
+  const flagZ = spec.targetFront - 1.05
+  const pole = sceneBox(group, [0.08, 2.1, 0.08], 0x353544, [3.65, 1.48, flagZ])
   pole.castShadow = true
-  const flag = sceneBox(group, [1.55, 0.68, 0.04], kind === 'beacon' ? 0xf2c14e : 0xf05d4e, [2.93, 2.05, -7.0], { castShadow: false })
-  flag.geometry.translate(0.62, 0, 0)
+  const flag = sceneBox(group, [1.55, 0.68, 0.04], kind === 'beacon' ? 0xf2c14e : 0xf05d4e, [3.65, 2.05, flagZ], { castShadow: false })
+  flag.geometry.translate(0.775, 0, 0)
   flag.userData.windResponsive = 'flag'
   flag.userData.baseRotation = 0
 }
@@ -715,10 +863,11 @@ function addDistrictShell(group, kind) {
 function updateWindProps(group, wind, now) {
   if (!group) return
   const lean = THREE.MathUtils.clamp(wind * 0.24, -0.3, 0.3)
+  const direction = Math.abs(wind) < 0.05 ? 1 : Math.sign(wind)
   group.traverse((child) => {
     if (child.userData.windResponsive === 'flag') {
       child.rotation.z = -lean + Math.sin(now * 0.006) * 0.025
-      child.scale.x = 1 + Math.min(0.14, Math.abs(wind) * 0.08)
+      child.scale.x = direction * (1 + Math.min(0.14, Math.abs(wind) * 0.08))
     }
     if (child.userData.windResponsive === 'laundry') {
       child.rotation.z = -lean * 0.72 + Math.sin(now * 0.004 + child.position.x) * 0.035
@@ -729,6 +878,7 @@ function updateWindProps(group, wind, now) {
 
 function createLevelScene(kind) {
   const group = new THREE.Group()
+  addDistrictEnvironment(group, kind)
   addDistrictShell(group, kind)
   if (kind === 'depot') {
     sceneBox(group, [1.15, 0.78, 1.05], 0xd99a5f, [-2.9, 0.86, -6.6])
@@ -754,14 +904,20 @@ function createLevelScene(kind) {
       }
     })
   } else if (kind === 'neon') {
-    const signBack = sceneBox(group, [4.8, 1.55, 0.16], 0x27283a, [0.6, 1.55, -16.1])
+    const signBack = sceneBox(group, [5.8, 2.05, 0.18], 0x0d1024, [0.45, 1.75, -15.45], { emissive: 0x15102d, emissiveIntensity: 0.7 })
     signBack.castShadow = true
-    const neonMaterial = new THREE.MeshBasicMaterial({ color: 0x79d7d2 })
-    for (const [x, y, width] of [[-1.1, 1.75, 1.1], [0.35, 1.35, 1.6], [1.35, 1.85, 0.9]]) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(width, 0.12, 0.08), neonMaterial)
-      bar.position.set(x, y, -15.98)
-      group.add(bar)
-    }
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(5.28, 1.52),
+      new THREE.MeshBasicMaterial({ map: makeNeonSignTexture(), transparent: true, depthWrite: false }),
+    )
+    sign.position.set(0.45, 1.75, -15.34)
+    group.add(sign)
+    const cyanGlow = new THREE.PointLight(0x35f5e4, 7.5, 8)
+    cyanGlow.position.set(-1.2, 2.2, -14.8)
+    group.add(cyanGlow)
+    const magentaGlow = new THREE.PointLight(0xff3f9b, 6.5, 7)
+    magentaGlow.position.set(2.1, 1.35, -14.8)
+    group.add(magentaGlow)
     sceneBox(group, [1.8, 0.18, 1.2], 0x4b5b78, [-2.7, 0.62, -7.1], { metalness: 0.18 })
   } else if (kind === 'glasshouse') {
     sceneBox(group, [3.8, 0.08, 3.7], 0xf4ead8, [2.45, 0.58, -13.65])
