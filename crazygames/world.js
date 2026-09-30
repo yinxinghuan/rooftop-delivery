@@ -409,12 +409,18 @@ export function createWorld(container) {
     get sceneName() { return sceneName },
     get districtMetrics() {
       const spec = DISTRICTS[sceneName]
-      const neonCounts = { textSigns: 0, foregroundTextSigns: 0, rearTextSigns: 0, symbols: 0, foregroundSymbols: 0, backgroundSymbols: 0, crosses: 0, boards: 0, eaves: 0, streetTubes: 0, roundTubes: 0, maxTubeRadius: 0 }
+      const neonCounts = { textSigns: 0, foregroundTextSigns: 0, rearTextSigns: 0, expressWallMounted: false, expressSpaced: false, expressScreen: null, symbols: 0, foregroundSymbols: 0, backgroundSymbols: 0, crosses: 0, boards: 0, eaves: 0, streetTubes: 0, roundTubes: 0, maxTubeRadius: 0 }
       if (sceneName === 'neon') scenes.neon.traverse((child) => {
         if (child.userData.neonText) {
           neonCounts.textSigns += 1
           if (child.userData.neonTextZone === 'foreground') neonCounts.foregroundTextSigns += 1
           if (child.userData.neonTextZone === 'rear') neonCounts.rearTextSigns += 1
+          if (child.userData.neonText === 'EXPRESS') {
+            neonCounts.expressWallMounted = child.userData.neonTextSurface === 'street-wall' && child.position.y < -1
+            neonCounts.expressSpaced = child.userData.neonLetterSpaced === true
+            const projected = child.getWorldPosition(new THREE.Vector3()).project(camera)
+            neonCounts.expressScreen = { x: Math.round((projected.x + 1) * 800) / 2, y: Math.round((1 - projected.y) * 450) / 2 }
+          }
         }
         if (child.userData.neonSymbol) {
           neonCounts.symbols += 1
@@ -679,16 +685,20 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
   }
 }
 
-function addNeonText(group, { text, width, height, color, position, axis = 'front', vertical = false, zone = 'foreground' }) {
+function addNeonText(group, { text, width, height, color, position, axis = 'front', rotationY = null, vertical = false, spaced = false, surface = 'sign', zone = 'foreground' }) {
   const isFront = axis === 'front'
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: makeNeonSignTexture(text, color, vertical), transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map: makeNeonSignTexture(text, color, vertical, spaced), transparent: true, depthWrite: false, side: THREE.DoubleSide }),
   )
   plane.position.set(...position)
-  if (!isFront) plane.rotation.y = axis === 'right' ? Math.PI / 2 : -Math.PI / 2
+  if (rotationY !== null) plane.rotation.y = rotationY
+  else if (!isFront) plane.rotation.y = axis === 'right' ? Math.PI / 2 : -Math.PI / 2
   plane.userData.neonText = text
   plane.userData.neonTextZone = zone
+  plane.userData.neonTextAxis = axis
+  plane.userData.neonLetterSpaced = spaced
+  plane.userData.neonTextSurface = surface
   group.add(plane)
   return plane
 }
@@ -754,7 +764,8 @@ function addNeonSymbol(group, symbol, color, streetFace, width, height, index, s
     handle.userData.neonTubeRadius = 0.06
     symbolGroup.add(handle)
   }
-  symbolGroup.position.set(faceX, y - (index % 3) * 0.18, 0)
+  const foregroundCupDrop = index === 18 ? 1.3 : 0
+  symbolGroup.position.set(faceX, y - (index % 3) * 0.18 - foregroundCupDrop, 0)
   symbolGroup.userData.neonSymbol = symbol
   symbolGroup.userData.neonSymbolRole = role
   symbolGroup.userData.neonSymbolScale = scale
@@ -815,8 +826,7 @@ function addDistrictEnvironment(group, kind) {
     addNeonRing(group, 0xffb84d, [6.05, 2.75, -13.7], 1.42)
     addNeonText(group, { text: '24H', width: 2.15, height: 1.18, color: 0xffb84d, position: [6.05, 2.75, -13.55], zone: 'rear' })
 
-    addNeonText(group, { text: 'EXPRESS', width: 4.45, height: 1.35, color: 0x5cff8d, position: [-5.55, 4.0, -4.15] })
-    sceneBox(group, [1.1, 0.12, 0.12], 0x232942, [-6.33, 4.0, -4.23], { metalness: 0.26, castShadow: false })
+    addNeonText(group, { text: 'EXPRESS', width: 5.0, height: 1.5, color: 0x5cff8d, position: [-9.15, -1.05, -6.3], rotationY: 1.3, spaced: true, surface: 'street-wall' })
   }
 
   const street = new THREE.Mesh(
@@ -984,12 +994,12 @@ function makeLabelTexture(text = 'RD / 01', accent = '#f05d4e') {
   return texture
 }
 
-function makeNeonSignTexture(text = 'NIGHT', color = 0x35f5e4, vertical = false) {
+function makeNeonSignTexture(text = 'NIGHT', color = 0x35f5e4, vertical = false, spaced = false) {
   makeNeonSignTexture.cache ||= new Map()
-  const cacheKey = `${text}-${color}-${vertical}`
+  const cacheKey = `${text}-${color}-${vertical}-${spaced}`
   if (makeNeonSignTexture.cache.has(cacheKey)) return makeNeonSignTexture.cache.get(cacheKey)
   const canvas = document.createElement('canvas')
-  canvas.width = vertical ? 320 : 768
+  canvas.width = vertical ? 320 : spaced ? 1024 : 768
   canvas.height = vertical ? 768 : 320
   const ctx = canvas.getContext('2d')
   ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -997,7 +1007,7 @@ function makeNeonSignTexture(text = 'NIGHT', color = 0x35f5e4, vertical = false)
   ctx.textBaseline = 'middle'
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  const fontSize = vertical ? 112 : text.length >= 7 ? 116 : text.length >= 6 ? 132 : 150
+  const fontSize = vertical ? 112 : spaced ? 150 : text.length >= 7 ? 116 : text.length >= 6 ? 132 : 150
   ctx.font = `900 ${fontSize}px Arial Rounded MT Bold, Arial Black, Arial, sans-serif`
   const tubeColor = `#${color.toString(16).padStart(6, '0')}`
   const coreColor = color === 0xff4fa3 ? '#ffd0e8' : color === 0xffb84d ? '#fff0b8' : color === 0x5cff8d ? '#d0ffdc' : '#c5fff9'
@@ -1018,6 +1028,10 @@ function makeNeonSignTexture(text = 'NIGHT', color = 0x35f5e4, vertical = false)
   if (vertical) {
     const step = canvas.height / (text.length + 0.6)
     ;[...text].forEach((letter, index) => drawTubeText(letter, canvas.width / 2, step * (index + 0.8)))
+  } else if (spaced) {
+    const letters = [...text]
+    const step = canvas.width / (letters.length + 1)
+    letters.forEach((letter, index) => drawTubeText(letter, step * (index + 1), canvas.height / 2))
   } else {
     drawTubeText(text, canvas.width / 2, canvas.height / 2)
   }
