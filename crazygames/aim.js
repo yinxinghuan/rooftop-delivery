@@ -69,11 +69,15 @@ function onRoof(x, z) {
   return Math.abs(x) <= 4.55 && z >= -18.25 && z <= -3.75
 }
 
-export function landingKind(x, z, targetX, targetZ, targetScale) {
+export function landingKind(x, z, targetX, targetZ, targetScale, secondaryTarget = null) {
   if (!onRoof(x, z)) return 'miss'
   const distance = Math.hypot(x - targetX, z - targetZ)
   if (distance <= 0.85 * targetScale) return 'bullseye'
   if (distance <= 1.7 * targetScale) return 'delivered'
+  if (secondaryTarget) {
+    const secondaryDistance = Math.hypot(x - secondaryTarget.x, z - secondaryTarget.z)
+    if (secondaryDistance <= 1.45 * secondaryTarget.scale) return 'delivered'
+  }
   return 'edge'
 }
 
@@ -170,6 +174,7 @@ export function stepFlight(flight, dt, env) {
   if (flight.grounded && !roof) {
     flight.grounded = false
     flight.vy = -0.25
+    flight.fellOff = true
   }
   if (!flight.grounded && roof && flight.y <= LANDING_Y && flight.vy < 0) {
     const impact = roofImpact(
@@ -196,21 +201,23 @@ export function stepFlight(flight, dt, env) {
     const angular = Math.hypot(flight.ax, flight.ay, flight.az)
     if (flight.elapsed - flight.firstContact >= 1.8 || (horizontal < 0.18 && angular < 0.35)) {
       flight.done = true
-      flight.kind = landingKind(flight.x, flight.z, env.targetX, env.targetZ, env.targetScale)
+      flight.kind = landingKind(flight.x, flight.z, env.targetX, env.targetZ, env.targetScale, env.secondaryTarget)
       return flight
     }
   }
-  if (flight.y < -7 || flight.elapsed > 6) {
+  if (flight.y < -11.5 || flight.elapsed > 6) {
     flight.done = true
-    flight.kind = flight.y < -7 || !onRoof(flight.x, flight.z) ? 'miss' : landingKind(flight.x, flight.z, env.targetX, env.targetZ, env.targetScale)
+    flight.kind = flight.y < -11.5 || !onRoof(flight.x, flight.z)
+      ? 'miss'
+      : landingKind(flight.x, flight.z, env.targetX, env.targetZ, env.targetScale, env.secondaryTarget)
   }
   return flight
 }
 
-export function simulateThrow({ dx, dy, wind, mods = {}, targetX, targetZ, targetScale = 1, animals = [] }) {
+export function simulateThrow({ dx, dy, wind, mods = {}, targetX, targetZ, targetScale = 1, secondaryTarget = null, animals = [] }) {
   const velocity = launchVelocity(dx, dy, wind, mods, targetX, targetZ)
   const flight = createFlight(velocity)
-  const env = { wind, targetX, targetZ, targetScale, animals }
+  const env = { wind, targetX, targetZ, targetScale, secondaryTarget, animals }
   const step = 1 / 60
   for (let i = 0; i < 360 && !flight.done; i += 1) stepFlight(flight, step, env)
   if (!flight.done) {

@@ -58,43 +58,49 @@ export const ROUTES = [
   },
   {
     id: 6, name: 'Neon Drift', scene: 'neon',
-    blurb: 'The address slides along the roof. Land 4 and score 220.',
+    blurb: 'The address slides and the wind flips while you charge. Land 4 and score 220.',
     parcels: 6, maxMisses: 2, windMin: 0.1, windMax: 0.78, targetScale: 1.02,
     deliveredGoal: 4, bullseyeGoal: 0, scoreGoal: 220, moveAmplitude: 0.7, movePeriod: 4.4,
     xRange: [-1.8, 1.8], zRange: [-12.2, -9.0], animals: [],
+    windFlip: true,
     parcel: { box: 0x8a6aa6, tape: 0x79d7d2, label: 'MOVE / 06' },
   },
   {
     id: 7, name: 'Glasshouse', scene: 'glasshouse',
-    blurb: 'Fragile crates and a chicken. Land 5, and center once.',
+    blurb: 'Fragile crates only survive the coral center. Land 5, and center once.',
     parcels: 6, maxMisses: 2, windMin: 0.15, windMax: 0.92, targetScale: 0.98,
     deliveredGoal: 5, bullseyeGoal: 1, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
     xRange: [-2.2, 2.2], zRange: [-12.8, -8.7], animals: [{ ...HEN }],
+    fragile: true,
     parcel: { box: 0xf4ead8, tape: 0xe0483b, label: 'FRAGILE' },
   },
   {
     id: 8, name: 'Twin Patrol', scene: 'beacon',
-    blurb: 'Cat and dog share the roof. Land 5 and center once.',
+    blurb: 'Two addresses: coral pays a bullseye, teal is a regular delivery.',
     parcels: 7, maxMisses: 2, windMin: 0.15, windMax: 1.02, targetScale: 0.94,
     deliveredGoal: 5, bullseyeGoal: 1, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
     xRange: [-2.3, 2.3], zRange: [-13.0, -8.6],
+    dualTarget: true,
     animals: [{ ...CAT, zOffset: -0.55, period: 4.6 }, { ...DOG, zOffset: 0.55, phase: Math.PI, period: 5.2 }],
     parcel: { box: 0x353544, tape: 0xf2c14e, label: 'DUO / 08' },
   },
   {
     id: 9, name: 'Market Run', scene: 'neon',
-    blurb: 'A moving address in a harder wind. Land 5, center once, score 320.',
+    blurb: 'A moving address and a charging gust. Land 5, center once, score 320.',
     parcels: 7, maxMisses: 2, windMin: 0.2, windMax: 1.08, targetScale: 0.9,
     deliveredGoal: 5, bullseyeGoal: 1, scoreGoal: 320, moveAmplitude: 0.85, movePeriod: 3.8,
     xRange: [-2.0, 2.0], zRange: [-12.6, -8.8], animals: [],
+    windFlip: true,
     parcel: { box: 0x8a6aa6, tape: 0x79d7d2, label: 'MKT / 09' },
   },
   {
     id: 10, name: 'Skyline Contract', scene: 'beacon',
-    blurb: 'The finale. Land 6, center twice, and clear 420 points.',
+    blurb: 'Two addresses and a charging gust. Land 6, center twice, clear 420.',
     parcels: 8, maxMisses: 2, windMin: 0.2, windMax: 1.22, targetScale: 0.86,
     deliveredGoal: 6, bullseyeGoal: 2, scoreGoal: 420, moveAmplitude: 0.62, movePeriod: 3.5,
     xRange: [-2.3, 2.3], zRange: [-13.2, -8.6],
+    dualTarget: true,
+    windFlip: true,
     animals: [{ ...CAT, amplitude: 2.3, zOffset: -0.6, period: 3.8 }, { ...DOG, amplitude: 2.1, zOffset: 0.6, phase: Math.PI, period: 4.4 }],
     parcel: { box: 0x353544, tape: 0xf2c14e, label: 'FINAL' },
   },
@@ -103,10 +109,20 @@ export const ROUTES = [
 export function overtimeRoute(id) {
   const tier = id - ROUTES.length
   const wind = Math.min(1.45, 0.95 + tier * 0.06)
+  const nightScenes = ['depot', 'laundry', 'garden', 'neon', 'glasshouse', 'beacon']
+  const scene = nightScenes[(tier - 1) % nightScenes.length]
+  const skins = {
+    depot: { box: 0xf05d4e, tape: 0xf7d58b },
+    laundry: { box: 0x4f83b8, tape: 0xfff5de },
+    garden: { box: 0x5d9b67, tape: 0xf4ead8 },
+    neon: { box: 0x8a6aa6, tape: 0x79d7d2 },
+    glasshouse: { box: 0xf4ead8, tape: 0xe0483b },
+    beacon: { box: 0x353544, tape: 0xf2c14e },
+  }
   return {
     id,
     name: `Night Contract ${tier}`,
-    scene: tier % 2 === 0 ? 'beacon' : 'neon',
+    scene,
     blurb: `Overtime shift ${tier}. The city does not get easier.`,
     parcels: 7,
     maxMisses: 2,
@@ -123,7 +139,7 @@ export function overtimeRoute(id) {
     animals: tier % 3 === 0
       ? [{ ...CAT, period: 3.6 }, { ...DOG, phase: Math.PI, zOffset: 0.5 }]
       : tier % 3 === 1 ? [{ ...HEN, period: 3.4 }] : [{ ...DOG, period: 4.1 }],
-    parcel: { box: tier % 2 ? 0x8a6aa6 : 0x353544, tape: 0xf2c14e, label: `NIGHT ${tier}` },
+    parcel: { ...skins[scene], label: `NIGHT ${tier}` },
   }
 }
 
@@ -235,6 +251,15 @@ export function nextMechanic(route, seen) {
   const known = new Set(seen || [])
   const types = new Set((route.animals || []).map((animal) => animal.type))
   const options = []
+  if (route.windFlip) {
+    options.push({ id: 'wind-flip', text: 'The wind flips once while you charge. Watch the rooftop flag turn first.' })
+  }
+  if (route.fragile) {
+    options.push({ id: 'fragile-center', text: 'Fragile crate: only the coral center counts. A pad-edge landing cracks the box.' })
+  }
+  if (route.dualTarget) {
+    options.push({ id: 'dual-pad', text: 'Two addresses: coral is a high-tip bullseye; the teal ring is a regular delivery.' })
+  }
   if (route.moveAmplitude > 0 && route.moveAmplitude < 0.85) {
     options.push({ id: 'creep', text: 'The pad creeps. Aim a little ahead of the mark.' })
   }

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && vite build --config vite.guest.config.js",
+    "test": "node _qa/crazygames-rules.mjs && npm run build",
     "dev:guest": "vite --config vite.guest.config.js --host 0.0.0.0 --port 5174",
     "preview": "vite preview --host 0.0.0.0"
   },

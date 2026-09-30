@@ -43,23 +43,19 @@ export function createWorld(container) {
   const startBuilding = makeBuilding(9.2, 8.5, 9.5, 0x625a70)
   startBuilding.position.set(0, -4.25, 5)
   city.add(startBuilding)
-  const targetBuilding = makeBuilding(9.2, 9.5, 14.5, 0x716678)
-  targetBuilding.position.set(0, -4.75, -11)
-  city.add(targetBuilding)
   const startRoof = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.22, 9.7), roofMaterial)
   startRoof.position.set(0, 0.38, 5)
   startRoof.receiveShadow = true
   city.add(startRoof)
-  const targetRoof = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.22, 14.7), roofMaterial)
-  targetRoof.position.set(0, 0.38, -11)
-  targetRoof.receiveShadow = true
-  city.add(targetRoof)
   addRoofDetails(city)
   addBackgroundCity(scene, city)
   const clouds = addClouds(scene)
 
   const targetGroup = createTarget()
   scene.add(targetGroup)
+  const secondaryTargetGroup = createSecondaryTarget()
+  secondaryTargetGroup.visible = false
+  scene.add(secondaryTargetGroup)
   const packageGroup = createPackage()
   scene.add(packageGroup)
 
@@ -104,18 +100,29 @@ export function createWorld(container) {
   let targetZ = -10.5
   let baseX = 0
   let targetScale = 1
+  let secondaryTarget = null
+  let secondaryBaseX = 0
   let moveAmplitude = 0
   let movePeriod = 4
   let sceneName = 'depot'
   let bob = true
+  let impactFx = 0
+  let windVisualOverride = null
 
-  function placeTarget(x, z, scale) {
+  function placeTarget(x, z, scale, secondary = null) {
     baseX = x
     targetX = x
     targetZ = z
     targetScale = scale
     targetGroup.position.set(x, ROOF_TOP + 0.015, z)
     targetGroup.scale.setScalar(scale)
+    secondaryTarget = secondary ? { ...secondary } : null
+    secondaryTargetGroup.visible = Boolean(secondaryTarget)
+    if (secondaryTarget) {
+      secondaryBaseX = secondaryTarget.x
+      secondaryTargetGroup.position.set(secondaryTarget.x, ROOF_TOP + 0.012, secondaryTarget.z)
+      secondaryTargetGroup.scale.setScalar(secondaryTarget.scale)
+    }
   }
 
   function resetPackage() {
@@ -124,6 +131,11 @@ export function createWorld(container) {
     packageGroup.visible = true
     packageGroup.position.set(0, 1.15, 2.6)
     packageGroup.rotation.set(-0.06, 0.12, 0)
+    packageGroup.scale.set(1, 1, 1)
+    packageGroup.children.forEach((child) => {
+      if (child.userData.packageCrack) child.visible = false
+    })
+    impactFx = 0
     hideAim()
   }
 
@@ -221,11 +233,17 @@ export function createWorld(container) {
 
   function step(dt, now, feltWind, calmRank) {
     wind = feltWind
+    const visualWind = windVisualOverride ?? wind
     if (moveAmplitude > 0) {
       const phase = (now / 1000) * (Math.PI * 2 / movePeriod)
       targetX = baseX + Math.sin(phase) * moveAmplitude
       targetGroup.position.x = targetX
+      if (secondaryTarget) {
+        secondaryTarget.x = secondaryBaseX + Math.sin(phase) * moveAmplitude
+        secondaryTargetGroup.position.x = secondaryTarget.x
+      }
     }
+    updateWindProps(scenes[sceneName], visualWind, now)
     updateAnimals(now)
     targetGroup.children.forEach((child) => {
       if (child.userData.spin) child.rotation.z += child.userData.spin * dt
@@ -235,9 +253,9 @@ export function createWorld(container) {
       }
     })
     windStreaks.children.forEach((streak) => {
-      const direction = Math.abs(wind) < 0.08 ? 1 : Math.sign(wind)
+      const direction = Math.abs(visualWind) < 0.08 ? 1 : Math.sign(visualWind)
       streak.position.x += direction * streak.userData.speed * dt
-      streak.material.opacity = streak.userData.baseOpacity * (0.45 + Math.min(1.2, Math.abs(wind)))
+      streak.material.opacity = streak.userData.baseOpacity * (0.45 + Math.min(1.2, Math.abs(visualWind)))
       if (streak.position.x > 12) streak.position.x = -12
       if (streak.position.x < -12) streak.position.x = 12
     })
@@ -247,18 +265,21 @@ export function createWorld(container) {
     })
     updateParticles(dt)
 
-    const event = { bounced: false, done: false, kind: null, animal: null }
+    const event = { bounced: false, done: false, kind: null, animal: null, fellOff: false }
     if (!flight) {
       if (bob) packageGroup.position.y = 1.15 + Math.sin(now * 0.004) * 0.06
+      updatePackageImpact(dt)
       return event
     }
     const beforeBounce = flight.bounceCount
     const beforeAnimal = flight.animalHit
+    const beforeFellOff = Boolean(flight.fellOff)
     stepFlight(flight, dt, {
       wind,
       targetX,
       targetZ,
       targetScale,
+      secondaryTarget,
       animals: animalSnapshots(calmRank),
     })
     packageGroup.position.set(flight.x, flight.y, flight.z)
@@ -266,7 +287,11 @@ export function createWorld(container) {
     packageGroup.rotation.y += flight.ay * dt
     packageGroup.rotation.z += flight.az * dt
     if (flight.bounceCount === 0 && Math.random() < dt * 14) spawnTrail()
-    if (flight.bounceCount > beforeBounce) event.bounced = true
+    if (flight.bounceCount > beforeBounce) {
+      event.bounced = true
+      impactFx = 0.38
+    }
+    if (flight.fellOff && !beforeFellOff) event.fellOff = true
     if (flight.animalHit && !beforeAnimal) {
       event.animal = flight.animalType
       const entry = roster.find((item) => item.type === flight.animalType && item.group.visible)
@@ -285,7 +310,23 @@ export function createWorld(container) {
       flight = null
       bob = false
     }
+    updatePackageImpact(dt)
     return event
+  }
+
+  function updatePackageImpact(dt) {
+    if (impactFx <= 0) {
+      packageGroup.scale.lerp(new THREE.Vector3(1, 1, 1), Math.min(1, dt * 18))
+      return
+    }
+    impactFx = Math.max(0, impactFx - dt)
+    const progress = 1 - impactFx / 0.38
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const amount = reduced ? 0.08 : 0.28
+    const squash = progress < 0.28
+      ? Math.sin((progress / 0.28) * Math.PI * 0.5)
+      : Math.sin(((progress - 0.28) / 0.72) * Math.PI) * (1 - progress)
+    packageGroup.scale.set(1 + squash * amount * 0.45, 1 - squash * amount, 1 + squash * amount * 0.32)
   }
 
   function render() {
@@ -307,10 +348,10 @@ export function createWorld(container) {
     },
     setSkin(parcel) {
       const box = packageGroup.children.find((child) => child.userData.packagePart === 'box')
-      const tape = packageGroup.children.find((child) => child.userData.packagePart === 'tape')
+      const tape = packageGroup.children.filter((child) => child.userData.packagePart === 'tape')
       const label = packageGroup.children.find((child) => child.userData.packagePart === 'label')
       if (box) box.material.color.setHex(parcel.box)
-      if (tape) tape.material.color.setHex(parcel.tape)
+      tape.forEach((part) => part.material.color.setHex(parcel.tape))
       if (label) {
         label.material.map?.dispose()
         label.material.map = makeLabelTexture(parcel.label, `#${parcel.box.toString(16).padStart(6, '0')}`)
@@ -323,13 +364,32 @@ export function createWorld(container) {
     },
     setAnimals,
     placeTarget,
+    previewWind(nextWind) { windVisualOverride = nextWind },
+    commitWind() { windVisualOverride = null },
+    crackPackage() {
+      packageGroup.children.forEach((child) => {
+        if (child.userData.packageCrack) child.visible = true
+      })
+    },
+    previewLanding({ cracked = false, secondary = false } = {}) {
+      const target = secondary && secondaryTarget ? secondaryTarget : { x: targetX, z: targetZ }
+      flight = null
+      bob = false
+      packageGroup.visible = true
+      packageGroup.position.set(target.x, ROOF_TOP + 0.29, target.z)
+      packageGroup.rotation.set(0.08, -0.16, 0.04)
+      packageGroup.scale.set(1.12, 0.72, 1.08)
+      packageGroup.children.forEach((child) => {
+        if (child.userData.packageCrack) child.visible = cracked
+      })
+    },
     resetPackage,
     setAim,
     hideAim,
     launch,
     step,
     render,
-    get target() { return { x: targetX, z: targetZ, scale: targetScale } },
+    get target() { return { x: targetX, z: targetZ, scale: targetScale, secondary: secondaryTarget ? { ...secondaryTarget } : null } },
     get actors() {
       return roster.filter((entry) => entry.config && entry.group.visible).map((entry) => ({
         type: entry.type,
@@ -338,6 +398,7 @@ export function createWorld(container) {
       }))
     },
     get flying() { return Boolean(flight) },
+    get sceneName() { return sceneName },
     pulseTarget() {
       targetGroup.children.forEach((child) => {
         if (child.geometry?.type?.includes('Ring')) child.scale.setScalar(1.16)
@@ -394,7 +455,7 @@ export function createWorld(container) {
   }
 }
 
-function makeBuilding(width, height, depth, color) {
+function makeBuilding(width, height, depth, color, options = {}) {
   const group = new THREE.Group()
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
@@ -403,7 +464,7 @@ function makeBuilding(width, height, depth, color) {
   body.castShadow = false
   body.receiveShadow = false
   group.add(body)
-  const windowMaterial = new THREE.MeshBasicMaterial({ color: 0xffd892, transparent: true, opacity: 0.72 })
+  const windowMaterial = new THREE.MeshBasicMaterial({ color: options.windowColor ?? 0xffd892, transparent: true, opacity: options.windowOpacity ?? 0.72 })
   for (let row = 0; row < Math.floor(height / 1.15); row += 1) {
     for (let col = -1; col <= 1; col += 1) {
       if ((row + col + Math.round(width)) % 3 === 0) continue
@@ -417,16 +478,6 @@ function makeBuilding(width, height, depth, color) {
 
 function addRoofDetails(city) {
   const dark = new THREE.MeshStandardMaterial({ color: 0x4a465d, roughness: 0.76 })
-  const coral = new THREE.MeshStandardMaterial({ color: 0xe76a5b, roughness: 0.7 })
-  const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.75, 8), dark)
-  vent.position.set(-3.1, 0.88, -15.7)
-  vent.castShadow = true
-  city.add(vent)
-  const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 1.05, 10), coral)
-  tank.position.y = 1.05
-  tank.castShadow = true
-  tank.position.set(3.2, 1.15, -16)
-  city.add(tank)
   const railMat = new THREE.MeshStandardMaterial({ color: 0x595265, roughness: 0.68 })
   for (const x of [-4.05, 4.05]) {
     const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.58, 7.2), railMat)
@@ -503,10 +554,32 @@ function createTarget() {
   return group
 }
 
+function createSecondaryTarget() {
+  const group = new THREE.Group()
+  const outer = new THREE.Mesh(
+    new THREE.RingGeometry(0.72, 1.45, 48),
+    new THREE.MeshBasicMaterial({ color: 0xfff5de, transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false }),
+  )
+  outer.rotation.x = -Math.PI / 2
+  group.add(outer)
+  const inner = new THREE.Mesh(
+    new THREE.RingGeometry(0.18, 0.66, 48),
+    new THREE.MeshBasicMaterial({ color: 0x0f7f78, transparent: true, opacity: 0.82, side: THREE.DoubleSide, depthWrite: false }),
+  )
+  inner.rotation.x = -Math.PI / 2
+  inner.position.y = 0.008
+  group.add(inner)
+  const marker = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.16, 0.32), new THREE.MeshBasicMaterial({ color: 0xfff5de }))
+  marker.rotation.y = Math.PI / 4
+  marker.position.y = 0.15
+  group.add(marker)
+  return group
+}
+
 function createPackage() {
   const group = new THREE.Group()
   const box = new THREE.Mesh(
-    new THREE.BoxGeometry(0.72, 0.52, 0.48),
+    new THREE.BoxGeometry(0.86, 0.62, 0.58),
     new THREE.MeshStandardMaterial({ color: 0xf05d4e, roughness: 0.76, metalness: 0.01 }),
   )
   box.castShadow = true
@@ -514,15 +587,33 @@ function createPackage() {
   box.userData.packagePart = 'box'
   group.add(box)
   const tape = new THREE.Mesh(
-    new THREE.BoxGeometry(0.15, 0.535, 0.49),
+    new THREE.BoxGeometry(0.18, 0.635, 0.59),
     new THREE.MeshStandardMaterial({ color: 0xf7d58b, roughness: 0.72 }),
   )
   tape.userData.packagePart = 'tape'
   group.add(tape)
-  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.2), new THREE.MeshBasicMaterial({ map: makeLabelTexture() }))
-  label.position.set(0.18, 0.03, 0.246)
+  const crossTape = new THREE.Mesh(
+    new THREE.BoxGeometry(0.87, 0.635, 0.15),
+    new THREE.MeshStandardMaterial({ color: 0xf7d58b, roughness: 0.72 }),
+  )
+  crossTape.userData.packagePart = 'tape'
+  group.add(crossTape)
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.26), new THREE.MeshBasicMaterial({ map: makeLabelTexture() }))
+  label.position.set(0.19, 0.015, 0.296)
   label.userData.packagePart = 'label'
   group.add(label)
+  const crackMaterial = new THREE.MeshBasicMaterial({ color: 0x27283a, side: THREE.DoubleSide })
+  const crackPoints = [
+    [[-0.28, 0.2], [-0.08, 0.04], [-0.22, -0.18]],
+    [[0.02, 0.24], [0.12, 0.06], [0.29, -0.12]],
+  ]
+  crackPoints.forEach((points) => {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0.3)))
+    const line = new THREE.Line(geometry, crackMaterial)
+    line.visible = false
+    line.userData.packageCrack = true
+    group.add(line)
+  })
   group.position.set(0, 1.15, 2.6)
   return group
 }
@@ -581,46 +672,121 @@ function sceneBox(group, size, color, position, options = {}) {
   return mesh
 }
 
+const DISTRICTS = {
+  depot: { height: 8.0, body: 0x8c6258, roof: 0xe8c99b, windows: 0xffd27a, utility: 'tank' },
+  laundry: { height: 10.6, body: 0x587792, roof: 0xd8e7e6, windows: 0xffedb6, utility: 'antenna' },
+  garden: { height: 7.1, body: 0x5f765c, roof: 0xd7cfaa, windows: 0xffd892, utility: 'tank' },
+  neon: { height: 12.1, body: 0x493f68, roof: 0x756a8a, windows: 0x79d7d2, utility: 'antenna' },
+  glasshouse: { height: 9.2, body: 0x5d6f76, roof: 0xe8dfcf, windows: 0xc4eeff, utility: 'tank' },
+  beacon: { height: 13.0, body: 0x30384f, roof: 0x596078, windows: 0xf2c14e, utility: 'antenna' },
+}
+
+function addDistrictShell(group, kind) {
+  const spec = DISTRICTS[kind]
+  const building = makeBuilding(9.2, spec.height, 14.5, spec.body, { windowColor: spec.windows })
+  building.position.set(0, 0.28 - spec.height / 2, -11)
+  group.add(building)
+  const roof = sceneBox(group, [9.4, 0.22, 14.7], spec.roof, [0, 0.38, -11], { castShadow: false })
+  roof.receiveShadow = true
+
+  if (spec.utility === 'tank') {
+    const tank = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.62, 0.68, 1.15, 12),
+      sceneMaterial(kind === 'garden' ? 0xc98955 : kind === 'glasshouse' ? 0x6b8e95 : 0xd77858),
+    )
+    tank.position.set(-3.35, 1.12, -15.6)
+    tank.castShadow = true
+    group.add(tank)
+    sceneBox(group, [1.05, 0.12, 1.05], 0x39384a, [-3.35, 0.58, -15.6])
+  } else {
+    sceneBox(group, [0.1, 2.3, 0.1], 0x39384a, [-3.4, 1.58, -15.65])
+    sceneBox(group, [1.35, 0.08, 0.08], spec.windows, [-3.4, 2.25, -15.65], { castShadow: false })
+    sceneBox(group, [0.08, 0.08, 1.1], spec.windows, [-3.4, 2.25, -15.65], { castShadow: false })
+  }
+
+  const pole = sceneBox(group, [0.08, 2.1, 0.08], 0x353544, [3.65, 1.48, -7.05])
+  pole.castShadow = true
+  const flag = sceneBox(group, [1.55, 0.68, 0.04], kind === 'beacon' ? 0xf2c14e : 0xf05d4e, [2.93, 2.05, -7.0], { castShadow: false })
+  flag.geometry.translate(0.62, 0, 0)
+  flag.userData.windResponsive = 'flag'
+  flag.userData.baseRotation = 0
+}
+
+function updateWindProps(group, wind, now) {
+  if (!group) return
+  const lean = THREE.MathUtils.clamp(wind * 0.24, -0.3, 0.3)
+  group.traverse((child) => {
+    if (child.userData.windResponsive === 'flag') {
+      child.rotation.z = -lean + Math.sin(now * 0.006) * 0.025
+      child.scale.x = 1 + Math.min(0.14, Math.abs(wind) * 0.08)
+    }
+    if (child.userData.windResponsive === 'laundry') {
+      child.rotation.z = -lean * 0.72 + Math.sin(now * 0.004 + child.position.x) * 0.035
+      child.rotation.y = lean * 0.22
+    }
+  })
+}
+
 function createLevelScene(kind) {
   const group = new THREE.Group()
+  addDistrictShell(group, kind)
   if (kind === 'depot') {
-    sceneBox(group, [0.9, 0.65, 0.8], 0xd99a5f, [-3.15, 0.82, -6.6])
-    sceneBox(group, [0.65, 0.45, 0.65], 0xf05d4e, [-2.55, 0.7, -6.2])
+    sceneBox(group, [1.15, 0.78, 1.05], 0xd99a5f, [-2.9, 0.86, -6.6])
+    sceneBox(group, [0.86, 0.56, 0.82], 0xf05d4e, [-1.85, 0.75, -6.15])
+    sceneBox(group, [2.8, 1.05, 0.12], 0x39384a, [2.1, 1.28, -16.1])
+    sceneBox(group, [2.45, 0.72, 0.05], 0xfff5de, [2.1, 1.28, -16.02], { castShadow: false })
+    for (const x of [1.4, 2.1, 2.8]) sceneBox(group, [0.12, 0.5, 0.06], 0xf05d4e, [x, 1.28, -15.98], { castShadow: false })
   } else if (kind === 'laundry') {
     for (const x of [-3.45, 3.45]) sceneBox(group, [0.08, 2.15, 0.08], 0x4a465d, [x, 1.55, -15.1])
     for (const z of [-15.05, -14.7]) sceneBox(group, [6.9, 0.035, 0.035], 0xf4ead8, [0, 2.15, z], { castShadow: false })
     ;[[-2.2, 0xf05d4e], [-0.75, 0xf7d58b], [0.8, 0x79d7d2], [2.2, 0x8a6aa6]].forEach(([x, color], index) => {
-      sceneBox(group, [0.75, 0.78, 0.04], color, [x, 1.75 - (index % 2) * 0.08, -15.02])
+      const cloth = sceneBox(group, [0.75, 0.78, 0.04], color, [x, 1.75 - (index % 2) * 0.08, -15.02])
+      cloth.userData.windResponsive = 'laundry'
     })
   } else if (kind === 'garden') {
-    ;[[-3.25, -15.6], [3.1, -14.8], [-3.4, -7.1], [3.25, -6.8]].forEach(([x, z], index) => {
-      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.35, 0.5, 8), sceneMaterial(index % 2 ? 0xf05d4e : 0xd99a5f))
-      pot.position.set(x, 0.76, z)
-      pot.castShadow = true
-      group.add(pot)
-      const plant = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), sceneMaterial(index % 2 ? 0x5d9b67 : 0x79a75d))
-      plant.position.set(x, 1.23, z)
-      plant.castShadow = true
-      group.add(plant)
+    ;[[-3.0, -14.8], [2.75, -14.3], [-3.15, -7.0], [2.9, -6.7]].forEach(([x, z], index) => {
+      sceneBox(group, [1.65, 0.48, 0.72], index % 2 ? 0xd99a5f : 0xb76b4b, [x, 0.73, z])
+      for (const offset of [-0.48, 0, 0.48]) {
+        const plant = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28 + (index % 2) * 0.05, 0), sceneMaterial(index % 2 ? 0x6fa361 : 0x4f8a58))
+        plant.position.set(x + offset, 1.12 + Math.abs(offset) * 0.12, z)
+        plant.castShadow = true
+        group.add(plant)
+      }
     })
   } else if (kind === 'neon') {
-    for (const x of [-3.15, 3.15]) {
-      const panel = sceneBox(group, [1.45, 0.08, 2.1], 0x4b5b78, [x, 0.87, -14.5], { metalness: 0.18 })
-      panel.rotation.x = -0.18
-      sceneBox(group, [1.5, 0.035, 0.06], 0x79d7d2, [x, 0.95, -13.48], { castShadow: false })
+    const signBack = sceneBox(group, [4.8, 1.55, 0.16], 0x27283a, [0.6, 1.55, -16.1])
+    signBack.castShadow = true
+    const neonMaterial = new THREE.MeshBasicMaterial({ color: 0x79d7d2 })
+    for (const [x, y, width] of [[-1.1, 1.75, 1.1], [0.35, 1.35, 1.6], [1.35, 1.85, 0.9]]) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(width, 0.12, 0.08), neonMaterial)
+      bar.position.set(x, y, -15.98)
+      group.add(bar)
     }
+    sceneBox(group, [1.8, 0.18, 1.2], 0x4b5b78, [-2.7, 0.62, -7.1], { metalness: 0.18 })
   } else if (kind === 'glasshouse') {
-    sceneBox(group, [2.5, 0.08, 3.2], 0xf4ead8, [3.05, 0.62, -14.4])
-    for (const x of [2, 4.1]) for (const z of [-15.8, -13]) sceneBox(group, [0.07, 1.8, 0.07], 0x5c5c68, [x, 1.5, z])
-    sceneBox(group, [2.1, 1.35, 0.05], 0x9fd6ff, [3.05, 1.55, -15.8], { opacity: 0.34, castShadow: false })
-    sceneBox(group, [2.1, 1.35, 0.05], 0x9fd6ff, [3.05, 1.55, -13], { opacity: 0.34, castShadow: false })
+    sceneBox(group, [3.8, 0.08, 3.7], 0xf4ead8, [2.45, 0.58, -13.65])
+    for (const x of [0.75, 4.15]) for (const z of [-15.3, -12.0]) sceneBox(group, [0.1, 2.25, 0.1], 0x3d4852, [x, 1.7, z])
+    for (const z of [-15.3, -12.0]) sceneBox(group, [3.4, 1.82, 0.07], 0x83d4e8, [2.45, 1.62, z], { opacity: 0.56, castShadow: false })
+    for (const x of [1.6, 2.45, 3.3]) sceneBox(group, [0.07, 1.8, 3.35], 0x4f5964, [x, 1.62, -13.65], { castShadow: false })
+    const roofLeft = sceneBox(group, [2.08, 0.08, 3.5], 0x83d4e8, [1.55, 2.72, -13.65], { opacity: 0.5, castShadow: false })
+    roofLeft.rotation.z = -0.34
+    const roofRight = sceneBox(group, [2.08, 0.08, 3.5], 0x83d4e8, [3.35, 2.72, -13.65], { opacity: 0.5, castShadow: false })
+    roofRight.rotation.z = 0.34
   } else if (kind === 'beacon') {
-    for (const [x, z] of [[-3.3, -15.7], [3.3, -15.2], [-3.4, -6.6], [3.4, -7.1]]) {
-      sceneBox(group, [0.18, 1.45, 0.18], 0x353544, [x, 1.25, z])
-      const lamp = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), new THREE.MeshBasicMaterial({ color: 0xf2c14e }))
-      lamp.position.set(x, 2.08, z)
-      group.add(lamp)
-    }
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.05, 2.65, 12), sceneMaterial(0xfff5de))
+    tower.position.set(2.85, 1.82, -15.0)
+    tower.castShadow = true
+    group.add(tower)
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 0.92, 0.28, 12), sceneMaterial(0x353544))
+    cap.position.set(2.85, 3.18, -15.0)
+    group.add(cap)
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.43, 10, 8), new THREE.MeshBasicMaterial({ color: 0xf2c14e }))
+    lamp.position.set(2.85, 3.52, -15.0)
+    group.add(lamp)
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(1.35, 5.5, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2c14e, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }))
+    beam.rotation.z = -Math.PI / 2
+    beam.position.set(0.15, 3.52, -15.0)
+    group.add(beam)
   }
   return group
 }

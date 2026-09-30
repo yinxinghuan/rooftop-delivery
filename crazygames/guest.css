@@ -154,6 +154,7 @@ h2 { font-size: 40px; line-height: 0.95; color: var(--ink); }
 .hud-wind .wind-read strong { font-size: 32px; }
 .wind-read { display: flex; align-items: center; gap: 6px; color: var(--wind); }
 .wind-read svg { width: 28px; height: 20px; }
+.wind-read svg.is-flipping { color: var(--postal); filter: drop-shadow(0 0 5px rgba(240, 93, 78, 0.62)); }
 
 .pips { display: flex; gap: 5px; height: 22px; align-items: center; }
 .pips i {
@@ -228,6 +229,8 @@ h2 { font-size: 40px; line-height: 0.95; color: var(--ink); }
   animation: cg-float 800ms ease forwards;
 }
 .floater.is-miss { color: var(--postal); }
+.floater.is-tip { top: 45%; color: #9a6500; font-size: 34px; animation-delay: 90ms; }
+.floater.is-wind { top: 35%; color: var(--wind); font-size: 34px; animation: cg-wind-turn 800ms ease forwards; }
 
 #powerDock {
   position: absolute;
@@ -577,6 +580,11 @@ kbd {
   from { opacity: 0; translate: -50% 10px; }
   20% { opacity: 1; }
   to { opacity: 0; translate: -50% -36px; }
+}
+@keyframes cg-wind-turn {
+  from { opacity: 1; translate: -50% 0; }
+  55% { opacity: 1; translate: -50% -8px; }
+  to { opacity: 0; translate: -50% -24px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -39,6 +39,7 @@ let pointer = null
 let lastTarget = { x: 99, z: 99 }
 let timer = 0
 let hintTimer = 0
+let windFlipTimer = 0
 let bridge = { sdk: null, live: false }
 let simNow = 0
 
@@ -70,6 +71,11 @@ function resetRun(routeId) {
     targetScale: 1,
     animalHits: 0,
     lastAnimal: '',
+    windFlipTriggered: false,
+    windFlipPending: null,
+    releaseQueued: false,
+    keyboardCharging: false,
+    fragileCrack: false,
   }
 }
 
@@ -160,9 +166,9 @@ function setVolume(percent) {
   saveAudio()
 }
 
-function pop(text, miss) {
+function pop(text, miss, tone = '') {
   const node = document.createElement('div')
-  node.className = `floater${miss ? ' is-miss' : ''}`
+  node.className = `floater${miss ? ' is-miss' : ''}${tone ? ` is-${tone}` : ''}`
   node.textContent = text
   $('#floatLayer').appendChild(node)
   window.setTimeout(() => node.remove(), 820)
@@ -177,10 +183,12 @@ function paintHud() {
   $('#hudScore').textContent = pad(run.score)
   $('#hudCombo').textContent = String(run.combo)
   $('#hudTips').textContent = String(profile.tips)
-  $('#hudWind').textContent = Math.abs(run.wind).toFixed(1)
+  const displayedWind = run.windFlipPending ?? run.wind
+  $('#hudWind').textContent = Math.abs(displayedWind).toFixed(1)
   const arrow = $('#windArrow')
-  arrow.style.transform = run.wind < -0.05 ? 'scaleX(-1)' : 'scaleX(1)'
-  arrow.style.opacity = Math.abs(run.wind) < 0.05 ? '0.45' : '1'
+  arrow.style.transform = displayedWind < -0.05 ? 'scaleX(-1)' : 'scaleX(1)'
+  arrow.style.opacity = Math.abs(displayedWind) < 0.05 ? '0.45' : '1'
+  arrow.classList.toggle('is-flipping', run.windFlipPending !== null)
   const misses = $('#hudMisses')
   misses.innerHTML = ''
   const total = step ? 1 : route.maxMisses
@@ -244,6 +252,21 @@ function rollWind(route, fixed) {
 }
 
 function rollTarget(route) {
+  if (route.dualTarget) {
+    const primaryLeft = Math.random() < 0.5
+    const primaryX = primaryLeft ? -1.85 : 1.85
+    const secondaryX = -primaryX
+    const primaryZ = -10.9 + Math.random() * 1.05
+    const secondaryZ = primaryZ + (Math.random() < 0.5 ? -0.5 : 0.5)
+    lastTarget = { x: primaryX, z: primaryZ }
+    run.targetScale = route.targetScale
+    world.placeTarget(primaryX, primaryZ, route.targetScale, {
+      x: secondaryX,
+      z: secondaryZ,
+      scale: Math.min(1, route.targetScale * 0.94),
+    })
+    return
+  }
   let x = 0
   let z = -10
   for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -271,6 +294,12 @@ function prepareRound(delay = 0) {
   run.charging = false
   run.aimDx = 0
   run.aimDy = 0
+  run.windFlipTriggered = false
+  run.windFlipPending = null
+  run.releaseQueued = false
+  run.keyboardCharging = false
+  window.clearTimeout(windFlipTimer)
+  world.commitWind()
   window.clearTimeout(timer)
   timer = window.setTimeout(() => {
     if (mode !== 'playing' || run.tutorialIndex !== null) return
@@ -297,6 +326,7 @@ function beginRoute(id) {
   audio.setRoute(route.id)
   presentRoute(route)
   world.resetPackage()
+  world.commitWind()
   setMode('playing')
   $('#tutorialCard').hidden = true
   $('#graceChip').hidden = false
@@ -354,6 +384,12 @@ function showTutorialStep() {
   run.charging = false
   run.aimDx = 0
   run.aimDy = 0
+  run.windFlipTriggered = false
+  run.windFlipPending = null
+  run.releaseQueued = false
+  run.keyboardCharging = false
+  window.clearTimeout(windFlipTimer)
+  world.commitWind()
   if (step.target) {
     run.targetScale = step.scale
     world.placeTarget(step.target[0], step.target[1], step.scale)
@@ -543,7 +579,8 @@ function award(kind) {
     run.combo = 0
     run.centerStreak = 0
     audio.play('error', 0.75)
-    pop('Miss', true)
+    if (!run.fragileCrack) pop('Miss', true)
+    run.fragileCrack = false
     return
   }
   run.delivered += 1
@@ -573,6 +610,7 @@ function award(kind) {
   profile.tips += tips
   profile = writeProfile(profile)
   pop(`+${points}`, false)
+  pop(`+${tips} tips`, false, 'tip')
   if (run.combo >= 2) audio.play('switch', 0.45)
 }
 
@@ -586,9 +624,15 @@ function resolveThrow(kind) {
     resolveTutorial(kind)
     return
   }
+  const route = liveRoute()
+  if (route.fragile && kind !== 'bullseye' && kind !== 'miss') {
+    world.crackPackage()
+    pop('Fragile crate cracked', true)
+    run.fragileCrack = true
+    kind = 'miss'
+  }
   award(kind)
   paintHud()
-  const route = liveRoute()
   window.clearTimeout(timer)
   if (run.misses >= route.maxMisses || run.parcelIndex >= route.parcels) {
     timer = window.setTimeout(finishRoute, 780)
@@ -706,6 +750,10 @@ function launchThrow() {
   dismissHint()
   const step = tutorialStep()
   if (!run.ready || run.flying || run.resolving || mode !== 'playing') return
+  if (run.windFlipPending !== null) {
+    run.releaseQueued = true
+    return
+  }
   if (step && (step.action === 'charge' || step.action === 'aim' || step.action === 'enter')) {
     if (step.action === 'charge') {
       const power = (run.aimDy - 24) / 156
@@ -731,8 +779,34 @@ function launchThrow() {
   run.flying = true
   run.ready = false
   run.charging = false
+  run.keyboardCharging = false
   audio.play('throw', 0.8)
   paintHud()
+}
+
+function beginWindFlip() {
+  const route = liveRoute()
+  if (!route.windFlip || run.windFlipTriggered || !run.keyboardCharging || run.tutorialIndex !== null) return
+  run.windFlipTriggered = true
+  run.windFlipPending = Math.abs(run.wind) < 0.05 ? -0.45 : -run.wind
+  world.previewWind(run.windFlipPending)
+  paintHud()
+  pop('Wind turning', false, 'wind')
+  window.clearTimeout(windFlipTimer)
+  windFlipTimer = window.setTimeout(() => {
+    if (run.windFlipPending === null) return
+    run.wind = run.windFlipPending
+    run.windFlipPending = null
+    world.commitWind()
+    paintHud()
+    if (run.ready && (run.charging || Math.abs(run.aimDx) > 1 || run.aimDy > 20)) {
+      world.setAim(run.aimDx, Math.max(24, run.aimDy), run.wind, mods())
+    }
+    if (run.releaseQueued) {
+      run.releaseQueued = false
+      launchThrow()
+    }
+  }, 180)
 }
 
 function updateAim(dt) {
@@ -745,6 +819,7 @@ function updateAim(dt) {
   if (run.charging || held.has('KeyW') || held.has('ArrowUp')) powerRate += 78
   if (held.has('KeyS') || held.has('ArrowDown')) powerRate -= 90
   if (powerRate) run.aimDy = clamp(run.aimDy + powerRate * dt, 0, 180)
+  if (run.keyboardCharging && (run.aimDy - 24) / 156 >= 0.12) beginWindFlip()
   const step = tutorialStep()
   if (step?.action === 'charge' && (run.aimDy - 24) / 156 >= 0.62) {
     run.charging = false
@@ -800,6 +875,7 @@ function onKeyDown(event) {
     }
     if (mode === 'playing' && run.ready && !run.flying) {
       run.charging = true
+      run.keyboardCharging = true
       run.aimDy = Math.max(run.aimDy, 24)
       audio.play('click', 0.25)
     }
@@ -815,6 +891,7 @@ function onKeyUp(event) {
       return
     }
     if (run.charging || run.aimDy > 0) launchThrow()
+    if (run.windFlipPending === null) run.keyboardCharging = false
   }
 }
 
@@ -828,6 +905,7 @@ function onPointerDown(event) {
   if (mode !== 'playing' || !run.ready || run.flying || event.target !== world.canvas) return
   pointer = { x: event.clientX, y: event.clientY, id: event.pointerId }
   run.charging = true
+  run.keyboardCharging = false
   world.canvas.setPointerCapture?.(event.pointerId)
 }
 
@@ -948,6 +1026,8 @@ if (new URLSearchParams(location.search).has('playtest')) {
         goal: run.tutorialIndex === null ? liveRoute().deliveredGoal : 0,
         passed: run.passed,
         wind: run.wind,
+        windFlipTriggered: run.windFlipTriggered,
+        windFlipPending: run.windFlipPending,
         moving: run.tutorialIndex === null && liveRoute().moveAmplitude > 0,
         animals: run.tutorialIndex === null ? (liveRoute().animals || []).map((animal) => animal.type) : [],
         animalHits: run.animalHits,
@@ -957,6 +1037,7 @@ if (new URLSearchParams(location.search).has('playtest')) {
         tutorial: run.tutorialIndex,
         tutorialAction: tutorialStep()?.action || null,
         target: { ...world.target },
+        scene: world.sceneName,
         actors: world.actors.map((actor) => ({ type: actor.type, x: actor.x, z: actor.z })),
         hint: $('#hintCard').hidden ? '' : $('#hintText').textContent,
         tips: profile.tips,
@@ -972,6 +1053,32 @@ if (new URLSearchParams(location.search).has('playtest')) {
         mods: mods(),
         targetScale: world.target.scale,
       })
+    },
+    startRoute(id) {
+      const routeId = clamp(Math.round(Number(id) || 1), 1, 10)
+      profile.unlocked = Math.max(profile.unlocked, routeId)
+      profile.selected = routeId
+      profile.tutorialSeen = true
+      profile = writeProfile(profile)
+      beginRoute(routeId)
+    },
+    showCrack() {
+      world.previewLanding({ cracked: true })
+      pop('Fragile crate cracked', true)
+    },
+    showLanding({ secondary = false } = {}) {
+      world.previewLanding({ secondary })
+      pop(secondary ? '+12 tips' : '+18 tips', false, 'tip')
+    },
+    triggerWindFlip() {
+      run.ready = true
+      run.charging = true
+      run.keyboardCharging = true
+      run.aimDy = 72
+      beginWindFlip()
+    },
+    resolve(kind) {
+      resolveThrow(kind)
     },
   }
 }

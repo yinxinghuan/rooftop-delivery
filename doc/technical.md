@@ -71,3 +71,20 @@ Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`
 - 调排行榜：修改 `src/leaderboard.js` 的榜单渲染、通知文案、海报 URL 和分数单位；不得改动永久 UUID，也不要简化 `public/aigram-bridge.js` 的平台信封协议。
 - 换封面：后续默认修改 `gen_poster.py` 的 `PROMPT` 并重新运行，主视觉必须走 Aigram transit `gen-image`，标题由 Pillow 本地合成且只保留主标题；当前 Codex 版本仅因用户明确选稿而保留。保持 `meta.json.cover_url` 为 `/poster.png`。
 - 接平台存档或其他社交功能：复用当前永久 UUID 与 `public/aigram-bridge.js`；排行榜已接入，共享墙与服务器存档尚未接入。
+
+## Crazy Games 游客版技术附录
+
+- `crazygames/` 是横屏英文游客版隔离入口；`vite.guest.config.js` 以该目录为 root，输出到 `dist/crazygames/`。宿主继续从根 `index.html` 和 `src/` 构建，本轮没有修改宿主运行源码。
+- `crazygames/campaign.js` 保持 10 条固定路线、七步教学、八项升级和可持续夜间合约。路线 6/9/10 使用 `windFlip`，路线 7 使用 `fragile`，路线 8/10 使用 `dualTarget`；`nextMechanic()` 将三类规则接入既有一次性提示卡。夜间合约按 depot → laundry → garden → neon → glasshouse → beacon 循环场景与对应箱体皮肤。
+- `crazygames/aim.js` 保留原有积分、碰撞、弹跳、摩擦与结算结构；`landingKind()` 只增加可选副落点判定，副落点永远返回普通 `delivered`。屋顶外坠落阈值延长到 `y=-11.5`，让包裹以原角速度穿过街道高度后再结算 `miss`。
+- `crazygames/main.js` 在每件包裹的键盘蓄力状态记录一次性翻风。风旗/HUD 先读 `windFlipPending`，180ms 后才写入权威 `run.wind` 并重算预测线；提前松开会排队等待翻转完成，不会用旧风发射。第 7 关把非 bullseye 的屋顶落点转为失误并显示裂箱，第 8/10 关生成左右分离的主副落点。
+- `crazygames/world.js` 用 Three.js 基础几何为六景生成不同楼高、墙色、窗光、水箱/天线与专属物件；公共风旗和 laundry 衣物按可见风向倾斜。纸箱使用两条相交胶带与 Canvas 标签，首次接触屋顶触发 380ms 压扁/回弹，裂纹为箱体前表面的 Line 几何。
+- `_qa/crazygames-rules.mjs` 检查路线数量/规则标记、夜间六景循环、副落点分类、坠街可见时段和 10 条路线的规划落点；`_qa/crazygames-review.mjs` 在真实 Chromium 中检查 800×450 无裁切、六景切换、易碎失误、翻风视觉先行/单次限制、双落点与控制台错误，并生成最终截图。
+- `?playtest=1` 仅为本地 QA 暴露 `window.__cg` 状态与展示钩子；普通游客入口不创建该对象。
+
+### 扩展点
+
+- 调六景轮廓、窗户、水箱/天线与专属设施：修改 `crazygames/world.js` 的 `DISTRICTS`、`addDistrictShell()` 和 `createLevelScene()`；保持目标走廊不被遮挡。
+- 调特殊规则覆盖路线：修改 `crazygames/campaign.js` 的 `windFlip`、`fragile`、`dualTarget`，并同步两份 QA 脚本与 `doc/requirements.md`。
+- 调翻风视觉领先时间：修改 `crazygames/main.js` 的 180ms 定时和 `crazygames/guest.css` 的 `cg-wind-turn`；不得让预测线或实际飞行先于风标更新。
+- 调双落点间距/尺寸：修改 `crazygames/main.js` 的 `rollTarget()` 与 `crazygames/world.js` 的 `createSecondaryTarget()`；副圈仍只算普通送达。
