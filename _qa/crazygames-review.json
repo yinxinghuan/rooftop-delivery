@@ -1,0 +1,165 @@
+{
+  "viewport": "800x450",
+  "errors": [],
+  "scenes": [
+    {
+      "scene": "depot",
+      "route": 1,
+      "target": {
+        "x": 0.48076067196509575,
+        "z": -10.767328625675061,
+        "scale": 1.58,
+        "secondary": null
+      },
+      "district": {
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 8547161,
+        "architecture": "warehouse"
+      }
+    },
+    {
+      "scene": "laundry",
+      "route": 2,
+      "target": {
+        "x": -2.760382715527505,
+        "z": -11.375304666522037,
+        "scale": 1,
+        "secondary": null
+      },
+      "district": {
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 5537169,
+        "architecture": "residential"
+      }
+    },
+    {
+      "scene": "garden",
+      "route": 5,
+      "target": {
+        "x": 1.8424256720684937,
+        "z": -8.993365385610335,
+        "scale": 1.04,
+        "secondary": null
+      },
+      "district": {
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 6845774,
+        "architecture": "courtyard"
+      }
+    },
+    {
+      "scene": "neon",
+      "route": 6,
+      "target": {
+        "x": -1.0051672750869094,
+        "z": -9.099822052339986,
+        "scale": 1.02,
+        "secondary": null
+      },
+      "district": {
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 2696007,
+        "architecture": "sign-tower"
+      }
+    },
+    {
+      "scene": "glasshouse",
+      "route": 7,
+      "target": {
+        "x": 1.198669110317066,
+        "z": -9.403715925734321,
+        "scale": 0.98,
+        "secondary": null
+      },
+      "district": {
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 5797504,
+        "architecture": "glassworks"
+      }
+    },
+    {
+      "scene": "beacon",
+      "route": 8,
+      "target": {
+        "x": -1.85,
+        "z": -10.73601719789139,
+        "scale": 0.94,
+        "secondary": {
+          "x": 1.85,
+          "z": -11.23601719789139,
+          "scale": 0.8835999999999999
+        }
+      },
+      "district": {
+        "gap": 4,
+        "streetWidth": 8,
+        "skylineCount": 22,
+        "palette": 2700875,
+        "architecture": "harbor"
+      }
+    }
+  ],
+  "fragileRule": {
+    "misses": 1,
+    "delivered": 0
+  },
+  "windFlip": {
+    "beforeFlip": 0.23513368064408996,
+    "duringFlip": -0.23513368064408996,
+    "afterFlip": -0.23513368064408996,
+    "directionChecks": [
+      {
+        "route": 6,
+        "wind": -0.15815847746235753,
+        "hud": -1,
+        "flag": -1
+      },
+      {
+        "route": 9,
+        "wind": 0.3955060131022659,
+        "pending": null,
+        "hud": 1,
+        "flag": 1
+      },
+      {
+        "route": 10,
+        "wind": 0.42292131767593355,
+        "pending": null,
+        "hud": 1,
+        "flag": 1
+      }
+    ]
+  },
+  "dualTargets": {
+    "route8": {
+      "x": 1.85,
+      "z": -10.567961447730053,
+      "scale": 0.94,
+      "secondary": {
+        "x": -1.85,
+        "z": -11.067961447730053,
+        "scale": 0.8835999999999999
+      }
+    },
+    "route10": {
+      "x": 1.6822693932126098,
+      "z": -10.315147156982988,
+      "scale": 0.86,
+      "secondary": {
+        "x": -2.0177306067873904,
+        "z": -9.815147156982988,
+        "scale": 0.8083999999999999
+      }
+    }
+  }
+}

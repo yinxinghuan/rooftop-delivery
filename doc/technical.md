@@ -71,3 +71,29 @@ Three.js 场景由 `makeBuilding()`、`addBackgroundCity()`、`addRoofDetails()`
 - 调排行榜：修改 `src/leaderboard.js` 的榜单渲染、通知文案、海报 URL 和分数单位；不得改动永久 UUID，也不要简化 `public/aigram-bridge.js` 的平台信封协议。
 - 换封面：后续默认修改 `gen_poster.py` 的 `PROMPT` 并重新运行，主视觉必须走 Aigram transit `gen-image`，标题由 Pillow 本地合成且只保留主标题；当前 Codex 版本仅因用户明确选稿而保留。保持 `meta.json.cover_url` 为 `/poster.png`。
 - 接平台存档或其他社交功能：复用当前永久 UUID 与 `public/aigram-bridge.js`；排行榜已接入，共享墙与服务器存档尚未接入。
+
+## Crazy Games 游客版技术附录
+
+- `crazygames/` 是横屏英文游客版隔离入口；`vite.guest.config.js` 以该目录为 root，输出到 `dist/crazygames/`。宿主继续从根 `index.html` 和 `src/` 构建，本轮没有修改宿主运行源码。
+- `crazygames/campaign.js` 保持 10 条固定路线、七步教学、八项升级和可持续夜间合约。路线 6/9/10 使用 `windFlip`，路线 7 使用 `fragile`，路线 8/10 使用 `dualTarget`；`nextMechanic()` 将三类规则接入既有一次性提示卡。夜间合约按 depot → laundry → garden → neon → glasshouse → beacon 循环场景与对应箱体皮肤。
+- `crazygames/aim.js` 保留原有积分、碰撞、弹跳、摩擦与结算结构；`landingKind()` 只增加可选副落点判定，副落点永远返回普通 `delivered`。屋顶外坠落阈值延长到 `y=-11.5`，让包裹以原角速度穿过街道高度后再结算 `miss`。
+- `crazygames/main.js` 在每件包裹的蓄力状态记录一次性翻风，键盘按住空格和鼠标在画布上拖动蓄力共用同一阈值。风旗/HUD 先读 `windFlipPending`，180ms 后才写入权威 `run.wind` 并重算预测线；提前松开会排队等待翻转完成，不会用旧风发射。第 7 关仍要求 5 次送达和 1 次珊瑚中心，垫圈落点不再改判失误；第 8/10 关生成左右分离的主副落点。
+- `crazygames/world.js` 用 Three.js 基础几何为六景生成不同楼高、墙色、窗光、水箱/天线与专属物件；公共风旗和 laundry 衣物按可见风向倾斜。纸箱使用两条相交胶带与 Canvas 标签，首次接触屋顶触发 380ms 压扁/回弹，裂纹使用箱体正面与顶面的深色 Plane 几何。
+- 第三轮审图把空间恢复为 `fa376ab` 的固定骨架：发件楼中心 `z=5`、收件楼中心 `z=-11`、街宽 8，并按原公式在左右各放 11 栋连续街楼。`makeBuilding()` 在这个共同空间内按楼高程序化生成楼层线、窗框/窗面与女儿墙，再由 `addArchitectureDetails()` 穷举 warehouse、residential、courtyard、sign-tower、glassworks、harbor 六类结构；不再为六景改变楼距或把楼拆成孤立体。物理落点边界、投掷积分器和 10 条路线数据不变。neon 的 `NIGHT POST` 使用运行时 CanvasTexture 与两盏程序化点光源，不依赖外部模型或图片。
+- 第四轮审图把主题设施从 `createLevelScene()` 的收件屋顶陈列移入 `addArchitectureDetails()` 的 22 栋侧街建筑。`streetFace` 决定装卸门、晾衣、窗台花箱和霓虹字牌朝向街谷，`roofDecor` 明确禁止发件楼与收件楼生成花园、灯带或玻璃棚；侧楼仍可生成货箱、花箱、玻璃棚和港区灯，beacon 的灯塔固定在后方侧楼。霓虹 `OPEN / POST / ROOF` 字牌共享缓存的运行时 CanvasTexture。收件屋顶仅保留既有风旗与一个水箱或天线，动物和双落点仍由玩法层生成。
+- 第五轮只补 neon：`addNeonBillboard()` 为前向/侧向楼面广告牌生成暗底、CanvasTexture 发光大字和四根独立 emissive BoxGeometry 边管；侧楼另生成屋沿管、临街窗框管和底层沿街管，`addDistrictEnvironment()` 在固定街宽内追加两排街面灯管。后方 index 0/1 的广告牌抬到屋顶线上方，其余广告牌留在左右高层立面。`_qa/crazygames-neon-review.mjs` 只启动 Route 6、隐藏 HUD、断言固定街道骨架/800×450 无溢出/无控制台错误并覆盖单张 neon 证据，不重拍其他五景。
+- 第六轮继续只补 neon：每栋侧街楼都按 `depth × 0.68`、`floorHeight × 2.18` 在 `streetFace` 生成墙牌；四块主牌通过支架附着近处左右和后方侧楼并面向相机，保证 `NIGHT / PARCEL / EXPRESS / 24H` 同帧完整。`makeNeonSignTexture()` 改为三层彩色 `strokeText` 管状笔画，不再 `fillText` 白字。`addGlowTube()` 统一生成 0.18–0.22 实体 emissive 内管及外扩 0.30 的半透明光晕，供 0.20 招牌边框、22 根通长檐口管、窗框和两根跨街管复用。专项 QA 从真实场景树断言 `streetSigns=22 / heroSigns=4 / eaves=22 / streetTubes=2`。
+- 第七轮只替换 neon 的招牌层：删除 `addNeonBillboard()` 及所有暗底板、矩形边框和逐楼文字牌；`addNeonText()` 只生成透明 CanvasTexture 上的三层灯管描边。四组文字分别是竖排 `NIGHT`、带独立几何箭头的 `PARCEL`、置于 Torus 灯管圆环内的 `24H`，以及用横向支架挂在后楼立面的较小 `EXPRESS`。其余 18 栋楼由 `addNeonSymbol()` 轮换箭头、圆圈、十字和杯子几何，并混用粉、青、琥珀、绿；22 根檐口灯管与两根跨街灯管保持不变。专项 QA 从真实场景树断言 `textSigns=4 / symbols=20 / boards=0 / eaves=22 / streetTubes=2`。
+- 第八轮仍只改 neon 灯管做法：`addGlowTube()` 不再生成 BoxGeometry，改为沿最长轴旋转的 CylinderGeometry，实体半径统一 `0.06`、外层圆管光晕半径 `0.12`；24H 圆环和符号弧线同步使用 `0.06` 截面 TorusGeometry。`EXPRESS` 移至近处左楼并移除专属 compact glow，和 `NIGHT` 共用完整三层描边。index 18/19 的近景侧楼分别保留 0.76 比例的杯子与箭头，其余 16 个符号缩到 0.42，十字只保留 2 个。专项 QA 断言 `foregroundTextSigns=3 / rearTextSigns=1 / foregroundSymbols=2 / backgroundSymbols=16 / crosses=2 / roundTubes=73 / maxTubeRadius=0.06`。
+- 第九轮只修 `EXPRESS`：从屋顶线上方移到左侧 index 18 建筑的朝街墙面楼层区，中心世界坐标为 `[-9.15, -1.05, -6.3]`，并沿墙面旋转 `1.3rad`，避免与竖排 `NIGHT` 的屏幕投影重叠。`makeNeonSignTexture()` 为 spaced 文字使用 1024px 透明画布，将 `E X P R E S S` 七个字母逐个执行同一套三层 `strokeText` 灯管描边；字母等距分布，不再依赖整词字体内部 kerning。专项 QA 同时断言 `expressWallMounted=true / expressSpaced=true` 并记录 800×450 屏幕投影位置。
+- 第十轮只移动 `EXPRESS`：保持既有 5.0×1.5 透明文字面和逐字灯管纹理不变，将中心改为 `[-8.75, 1.55, -0.98]`、取消 Y 轴斜转，使其与 `NIGHT` 共用相机正视的 `z≈-1` 墙面平面。800×450 下中心投影约 `(121,233)`，宽度范围约 `x=42–199`，完整避开画面左边界与 `NIGHT`。专项 QA 新增 `expressSameNightPlane=true` 及中心投影范围断言；相机、建筑、灯管、符号和玩法数据均不变。
+- 风旗几何以旗杆为缩放原点，`scale.x` 的正负直接表示当前可见风向；HUD 箭头同样以 `scaleX(±1)` 表示方向。QA 在 180ms 翻转提交后分别检查路线 6、9、10 的权威风、HUD 箭头和旗帜方向相同。易碎箱改用正面与顶面的厚 Plane 裂纹，结果浮字使用独立 `is-fragile` 位置避免遮挡箱体。
+- `_qa/crazygames-rules.mjs` 检查路线数量/规则标记、夜间六景循环、副落点分类、坠街可见时段、第 7 关垫圈计入送达且中心仍是过关条件、鼠标与键盘共用的翻风阈值，以及 10 条路线的规划落点；`_qa/crazygames-review.mjs` 在真实 Chromium 中检查 800×450 无裁切、六类建筑身份唯一、六景均保持 `gap=4 / streetWidth=8 / skylineCount=22` 的固定街道骨架、第 7 关连续垫圈不提前结束、翻风视觉先行/单次限制、双落点与控制台错误，并生成最终截图。
+- `?playtest=1` 仅为本地 QA 暴露 `window.__cg` 状态与展示钩子；普通游客入口不创建该对象。
+
+### 扩展点
+
+- 调六景轮廓、窗户与侧街专属设施：修改 `crazygames/world.js` 的 `DISTRICTS`、`addArchitectureDetails()` 和 `addDistrictEnvironment()`；`addDistrictShell()` 只管理收件楼、单个水箱/天线与风旗，保持目标走廊不被遮挡。
+- 调特殊规则覆盖路线：修改 `crazygames/campaign.js` 的 `windFlip`、`fragile`、`dualTarget`，并同步两份 QA 脚本与 `doc/requirements.md`。
+- 调翻风视觉领先时间：修改 `crazygames/main.js` 的 180ms 定时和 `crazygames/guest.css` 的 `cg-wind-turn`；不得让预测线或实际飞行先于风标更新。
+- 调双落点间距/尺寸：修改 `crazygames/main.js` 的 `rollTarget()` 与 `crazygames/world.js` 的 `createSecondaryTarget()`；副圈仍只算普通送达。
