@@ -409,15 +409,16 @@ export function createWorld(container) {
     get sceneName() { return sceneName },
     get districtMetrics() {
       const spec = DISTRICTS[sceneName]
-      const neonCounts = { textSigns: 0, foregroundTextSigns: 0, rearTextSigns: 0, expressWallMounted: false, expressSpaced: false, expressScreen: null, symbols: 0, foregroundSymbols: 0, backgroundSymbols: 0, crosses: 0, boards: 0, eaves: 0, streetTubes: 0, roundTubes: 0, maxTubeRadius: 0 }
+      const neonCounts = { textSigns: 0, foregroundTextSigns: 0, rearTextSigns: 0, expressWallMounted: false, expressSpaced: false, expressSameNightPlane: false, expressScreen: null, symbols: 0, foregroundSymbols: 0, backgroundSymbols: 0, crosses: 0, boards: 0, eaves: 0, streetTubes: 0, roundTubes: 0, maxTubeRadius: 0 }
       if (sceneName === 'neon') scenes.neon.traverse((child) => {
         if (child.userData.neonText) {
           neonCounts.textSigns += 1
           if (child.userData.neonTextZone === 'foreground') neonCounts.foregroundTextSigns += 1
           if (child.userData.neonTextZone === 'rear') neonCounts.rearTextSigns += 1
           if (child.userData.neonText === 'EXPRESS') {
-            neonCounts.expressWallMounted = child.userData.neonTextSurface === 'street-wall' && child.position.y < -1
+            neonCounts.expressWallMounted = child.userData.neonTextSurface === 'street-wall'
             neonCounts.expressSpaced = child.userData.neonLetterSpaced === true
+            neonCounts.expressSameNightPlane = Math.abs(child.position.z + 1) < 0.05 && Math.abs(child.rotation.y) < 0.01
             const projected = child.getWorldPosition(new THREE.Vector3()).project(camera)
             neonCounts.expressScreen = { x: Math.round((projected.x + 1) * 800) / 2, y: Math.round((1 - projected.y) * 450) / 2 }
           }
@@ -826,7 +827,7 @@ function addDistrictEnvironment(group, kind) {
     addNeonRing(group, 0xffb84d, [6.05, 2.75, -13.7], 1.42)
     addNeonText(group, { text: '24H', width: 2.15, height: 1.18, color: 0xffb84d, position: [6.05, 2.75, -13.55], zone: 'rear' })
 
-    addNeonText(group, { text: 'EXPRESS', width: 5.0, height: 1.5, color: 0x5cff8d, position: [-9.15, -1.05, -6.3], rotationY: 1.3, spaced: true, surface: 'street-wall' })
+    addNeonText(group, { text: 'EXPRESS', width: 5.0, height: 1.5, color: 0x5cff8d, position: [-8.75, 1.55, -0.98], spaced: true, surface: 'street-wall' })
   }
 
   const street = new THREE.Mesh(

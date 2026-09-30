@@ -1,9 +1,9 @@
-# Rooftop Delivery — Crazy Games 第九轮 EXPRESS 审图修正
+# Rooftop Delivery — Crazy Games 第十轮 EXPRESS 位置修正
 
 ## 本轮范围
 
 - 分支：`cursor/crazygames-guest-7e22`
-- 起点：`70aec07`
+- 起点：`6c11d6a`
 - 只修改 Crazy Games 隔离代码、QA 与文档；没有修改宿主运行代码，没有重写抛掷结算。
 - 10 条固定路线、七步教学、八项升级与夜间合约全部保留；没有新增路线、广告、内购或账号。
 
@@ -34,8 +34,8 @@
 
 - 所有暗色底板、方牌、矩形亮框和逐楼复制的文字广告牌已删除；文字纹理使用透明底与三层彩色 `strokeText`，字母本身就是灯管。
 - 所有实体灯管从 0.18–0.22 厚的 BoxGeometry 方条换成半径 `0.06` 的 CylinderGeometry；圆形与杯把使用同截面 TorusGeometry。檐口与两根跨街灯也使用细圆管，不再形成发白的矩形框。
-- 文字只保留四组：近处左楼竖排青色 `NIGHT`，绿色 `EXPRESS` 独立安装在左侧 index 18 建筑的朝街墙面楼层区，右楼粉色 `PARCEL` 接琥珀色朝街箭头，后方楼为琥珀色圆环中的 `24H`。`EXPRESS` 不再位于屋顶棱线，与 `NIGHT` 的投影分开。
-- `EXPRESS` 使用 1024px 透明画布，七个字母逐字应用同一套三层灯管描边并等距排布；最终 800×450 投影中心约为 `(178,249)`，完整落在左楼可见墙面范围。
+- 文字只保留四组：近处左楼竖排青色 `NIGHT`，绿色 `EXPRESS` 与它共用相机正视的 `z≈-1` 墙面平面并横排在左下侧；右楼粉色 `PARCEL` 接琥珀色朝街箭头，后方楼为琥珀色圆环中的 `24H`。`EXPRESS` 不再沿斜侧墙伸进楼角。
+- `EXPRESS` 使用 1024px 透明画布，七个字母逐字应用同一套三层灯管描边并等距排布；最终 800×450 投影中心约为 `(121,233)`，整个单词约落在 `x=42–199`，两个 `S` 均完整显示，并与 `NIGHT` 保持间距。
 - 近景左右侧楼分别只突出一个杯子和一个箭头，比例为 0.76；其余 16 个符号缩为 0.42，十字仅保留 2 个，避免抢过四组文字。
 - 22 栋朝街檐口各保留一根覆盖完整墙宽的通长细圆管；街谷左右各一根 4.45 长的细圆管直接连接玩家屋顶与落点屋顶。
 - 收件屋顶未增加招牌或灯管，仍只保留垫圈、旗子和一件小型天线。
@@ -60,7 +60,7 @@
 - 六景共享已恢复的连续街道骨架；六个建筑族与建筑主色均唯一，差异来自可见结构而非移动楼距或只换色。
 - 六张无 HUD 截图中，主题物件分布在左右/后方楼体，收件屋顶没有大型主题陈列；垫圈与旗帜保持清楚。
 - neon 专项 Chromium 截图为 800×450，无溢出、裁切、页面异常或控制台错误；固定 `gap=4 / streetWidth=8 / skylineCount=22` 未变。
-- 真实场景树计数：`textSigns=4`、`foregroundTextSigns=3`、`rearTextSigns=1`、`expressWallMounted=true`、`expressSpaced=true`、`symbols=20`、`foregroundSymbols=2`、`backgroundSymbols=16`、`crosses=2`、`boards=0`、`eaves=22`、`streetTubes=2`、`roundTubes=73`、`maxTubeRadius=0.06`。
+- 真实场景树计数：`textSigns=4`、`foregroundTextSigns=3`、`rearTextSigns=1`、`expressWallMounted=true`、`expressSpaced=true`、`expressSameNightPlane=true`、`symbols=20`、`foregroundSymbols=2`、`backgroundSymbols=16`、`crosses=2`、`boards=0`、`eaves=22`、`streetTubes=2`、`roundTubes=73`、`maxTubeRadius=0.06`。
 - Route 6 / 9 / 10：翻转完成后权威风、HUD 箭头和旗帜方向逐关一致。
 - Route 7 普通垫圈：`misses=1`、`delivered=0`；结果浮字与箱体不重叠，顶面裂纹可见。
 
@@ -82,6 +82,6 @@
 - P1 “31e9daf 把街道拆成空地上的孤立方块”已通过恢复 `fa376ab` 固定空间与隐藏 HUD 的六张复拍关闭。
 - P1 “楼体只是白点方块/同模型换色”已通过楼层、窗框、女儿墙和六类专属建筑结构关闭。
 - P1 “主题装饰都堆在落点屋顶”已通过侧街附着规则与六张无 HUD 复拍关闭。
-- P1 “EXPRESS 趴在屋顶棱线、与 NIGHT 重叠且无法完整读出”已通过左楼墙面重定位、逐字灯管描边、等距排布和同状态专项复拍关闭。
+- P1 “EXPRESS 沿斜侧墙只能看到 EXPRE、末尾 S 被楼角挡住”已通过移至 NIGHT 同一正视墙面、锁定屏幕投影范围和同状态专项复拍关闭。
 - P1 “翻风静帧方向未提交”和“裂箱浮字遮挡”已用最终静帧与浏览器断言关闭。
 - `comprehension unverified`：本轮只改视觉辨识与反馈证据，仍没有全新真人复述玩法三问合同的证据。
