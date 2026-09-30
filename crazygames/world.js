@@ -409,12 +409,21 @@ export function createWorld(container) {
     get sceneName() { return sceneName },
     get districtMetrics() {
       const spec = DISTRICTS[sceneName]
+      const neonCounts = { signs: 0, streetSigns: 0, heroSigns: 0, eaves: 0, streetTubes: 0 }
+      if (sceneName === 'neon') scenes.neon.traverse((child) => {
+        if (child.userData.neonBillboard) neonCounts.signs += 1
+        if (child.userData.neonBillboard === 'street-wall') neonCounts.streetSigns += 1
+        if (child.userData.neonBillboard === 'hero') neonCounts.heroSigns += 1
+        if (child.userData.neonTubeRole === 'eave') neonCounts.eaves += 1
+        if (child.userData.neonTubeRole === 'street') neonCounts.streetTubes += 1
+      })
       return {
         gap: 4,
         streetWidth: 8,
         skylineCount: 22,
         palette: spec.body,
         architecture: spec.architecture,
+        ...(sceneName === 'neon' ? { neonCounts } : {}),
       }
     },
     get windPropDirection() {
@@ -617,40 +626,36 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
     }
   } else if (kind === 'neon') {
     const neonColor = index % 2 ? 0xff4fa3 : 0x35f5e4
-    if (streetFace && index % 4 < 2) {
-      const labels = ['NIGHT', 'PARCEL', 'EXPRESS', '24H', 'AIRMAIL', 'OPEN']
-      const frontSignY = index < 2 ? top + 1.02 : top - 0.86
+    if (streetFace) {
+      const labels = ['NIGHT', 'PARCEL', 'EXPRESS', '24H']
+      const floorHeight = height / Math.max(2, Math.floor(height / 1.25))
+      const signHeight = Math.min(height * 0.66, floorHeight * 2.18)
+      const signWidth = depth * 0.68
       addNeonBillboard(group, {
         text: labels[index % labels.length],
-        width: Math.min(3.45, width * 0.9),
-        height: Math.min(1.26, height * 0.2),
+        width: signWidth,
+        height: signHeight,
         color: neonColor,
-        position: [0, frontSignY, depth / 2 + 0.13],
-        axis: 'front',
-      })
-      addNeonBillboard(group, {
-        text: labels[(index + 3) % labels.length],
-        width: Math.min(3.15, depth * 0.68),
-        height: Math.min(1.12, height * 0.18),
-        color: neonColor,
-        position: [streetFace * (width / 2 + 0.13), top - 0.8, 0],
+        position: [streetFace * (width / 2 + 0.17), top - signHeight / 2 - 0.38, 0],
         axis: streetFace > 0 ? 'right' : 'left',
+        role: 'street-wall',
       })
     }
     if (roofDecor) {
-      sceneBox(group, [width * 0.82, 0.075, 0.075], neonColor, [0, top + 0.51, depth / 2], { emissive: neonColor, emissiveIntensity: 3.4, castShadow: false })
-      if (streetFace) sceneBox(group, [0.075, 0.075, depth * 0.78], neonColor, [streetFace * (width / 2 + 0.04), top + 0.5, 0], { emissive: neonColor, emissiveIntensity: 3.4, castShadow: false })
+      if (streetFace) {
+        const eave = addGlowTube(group, [0.2, 0.2, depth + 0.12], neonColor, [streetFace * (width / 2 + 0.08), top + 0.52, 0])
+        eave.userData.neonTubeRole = 'eave'
+      }
     }
     if (streetFace) {
       const opposite = index % 2 ? 0x35f5e4 : 0xff4fa3
-      const windowY = top - Math.min(2.15, height * 0.32)
-      for (const z of [-depth * 0.23, depth * 0.23]) {
-        sceneBox(group, [0.075, 0.68, 0.075], opposite, [streetFace * (width / 2 + 0.05), windowY, z - 0.42], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
-        sceneBox(group, [0.075, 0.68, 0.075], opposite, [streetFace * (width / 2 + 0.05), windowY, z + 0.42], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
-        sceneBox(group, [0.075, 0.075, 0.9], opposite, [streetFace * (width / 2 + 0.05), windowY + 0.34, z], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
-        sceneBox(group, [0.075, 0.075, 0.9], opposite, [streetFace * (width / 2 + 0.05), windowY - 0.34, z], { emissive: opposite, emissiveIntensity: 2.8, castShadow: false })
+      const windowY = -top + Math.min(1.15, height * 0.2)
+      for (const z of [-depth * 0.26, depth * 0.26]) {
+        addGlowTube(group, [0.18, 0.82, 0.18], opposite, [streetFace * (width / 2 + 0.075), windowY, z - 0.48], 0.16)
+        addGlowTube(group, [0.18, 0.82, 0.18], opposite, [streetFace * (width / 2 + 0.075), windowY, z + 0.48], 0.16)
+        addGlowTube(group, [0.18, 0.18, 1.14], opposite, [streetFace * (width / 2 + 0.075), windowY + 0.41, z], 0.16)
+        addGlowTube(group, [0.18, 0.18, 1.14], opposite, [streetFace * (width / 2 + 0.075), windowY - 0.41, z], 0.16)
       }
-      sceneBox(group, [0.075, 0.08, depth * 0.82], neonColor, [streetFace * (width / 2 + 0.055), -top + 0.34, 0], { emissive: neonColor, emissiveIntensity: 3.1, castShadow: false })
     }
   } else if (kind === 'glasshouse') {
     if (roofDecor) {
@@ -679,33 +684,44 @@ function addArchitectureDetails(group, kind, width, height, depth, options) {
   }
 }
 
-function addNeonBillboard(group, { text, width, height, color, position, axis }) {
+function addNeonBillboard(group, { text, width, height, color, position, axis, role = 'hero' }) {
   const isFront = axis === 'front'
-  const panelSize = isFront ? [width + 0.24, height + 0.24, 0.12] : [0.12, height + 0.24, width + 0.24]
+  const panelSize = isFront ? [width + 0.36, height + 0.36, 0.16] : [0.16, height + 0.36, width + 0.36]
   const panel = sceneBox(group, panelSize, 0x080a1c, position, { emissive: 0x12152c, emissiveIntensity: 0.8, castShadow: false })
+  panel.userData.neonBillboard = role
+  panel.userData.neonBillboardSize = { width, height }
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: makeNeonSignTexture(text), transparent: true, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ map: makeNeonSignTexture(text, color), transparent: true, depthWrite: false }),
   )
   plane.position.set(...position)
   if (isFront) {
-    plane.position.z += 0.071
+    plane.position.z += 0.101
   } else {
-    plane.position.x += axis === 'right' ? 0.071 : -0.071
+    plane.position.x += axis === 'right' ? 0.101 : -0.101
     plane.rotation.y = axis === 'right' ? Math.PI / 2 : -Math.PI / 2
   }
   group.add(plane)
 
-  const tubeOptions = { emissive: color, emissiveIntensity: 4.2, castShadow: false }
   if (isFront) {
-    for (const y of [-height / 2 - 0.08, height / 2 + 0.08]) sceneBox(group, [width + 0.22, 0.075, 0.08], color, [position[0], position[1] + y, position[2] + 0.09], tubeOptions)
-    for (const x of [-width / 2 - 0.08, width / 2 + 0.08]) sceneBox(group, [0.075, height + 0.22, 0.08], color, [position[0] + x, position[1], position[2] + 0.09], tubeOptions)
+    for (const y of [-height / 2 - 0.14, height / 2 + 0.14]) addGlowTube(group, [width + 0.46, 0.2, 0.2], color, [position[0], position[1] + y, position[2] + 0.13])
+    for (const x of [-width / 2 - 0.14, width / 2 + 0.14]) addGlowTube(group, [0.2, height + 0.46, 0.2], color, [position[0] + x, position[1], position[2] + 0.13])
   } else {
-    const faceX = position[0] + (axis === 'right' ? 0.09 : -0.09)
-    for (const y of [-height / 2 - 0.08, height / 2 + 0.08]) sceneBox(group, [0.08, 0.075, width + 0.22], color, [faceX, position[1] + y, position[2]], tubeOptions)
-    for (const z of [-width / 2 - 0.08, width / 2 + 0.08]) sceneBox(group, [0.08, height + 0.22, 0.075], color, [faceX, position[1], position[2] + z], tubeOptions)
+    const faceX = position[0] + (axis === 'right' ? 0.13 : -0.13)
+    for (const y of [-height / 2 - 0.14, height / 2 + 0.14]) addGlowTube(group, [0.2, 0.2, width + 0.46], color, [faceX, position[1] + y, position[2]])
+    for (const z of [-width / 2 - 0.14, width / 2 + 0.14]) addGlowTube(group, [0.2, height + 0.46, 0.2], color, [faceX, position[1], position[2] + z])
   }
   panel.renderOrder = 1
+}
+
+function addGlowTube(group, size, color, position, glowOpacity = 0.22) {
+  const glowSize = size.map((value) => value + 0.3)
+  const glow = sceneBox(group, glowSize, color, position, { emissive: color, emissiveIntensity: 2.4, opacity: glowOpacity, castShadow: false })
+  glow.material.depthWrite = false
+  glow.renderOrder = 1
+  const tube = sceneBox(group, size, color, position, { emissive: color, emissiveIntensity: 5.2, castShadow: false })
+  tube.renderOrder = 2
+  return tube
 }
 
 function addDistrictEnvironment(group, kind) {
@@ -732,6 +748,19 @@ function addDistrictEnvironment(group, kind) {
     group.add(building)
   }
 
+  if (kind === 'neon') {
+    const heroSigns = [
+      { text: 'NIGHT', color: 0x35f5e4, position: [-5.75, 2.35, -1.0], bracketX: -6.55 },
+      { text: 'PARCEL', color: 0xff4fa3, position: [5.75, 2.35, -1.0], bracketX: 6.55 },
+      { text: 'EXPRESS', color: 0xff4fa3, position: [-6.15, 3.0, -13.7], bracketX: -7.15 },
+      { text: '24H', color: 0x35f5e4, position: [6.15, 3.0, -13.7], bracketX: 7.15 },
+    ]
+    heroSigns.forEach(({ text, color, position, bracketX }) => {
+      addNeonBillboard(group, { text, width: text === 'EXPRESS' ? 4.45 : 3.8, height: 2.35, color, position, axis: 'front', role: 'hero' })
+      sceneBox(group, [Math.abs(bracketX - position[0]) + 0.18, 0.18, 0.18], 0x232942, [(bracketX + position[0]) / 2, position[1], position[2] - 0.04], { metalness: 0.26, castShadow: false })
+    })
+  }
+
   const street = new THREE.Mesh(
     new THREE.PlaneGeometry(8, 52),
     new THREE.MeshStandardMaterial({ color: spec.street, roughness: 1 }),
@@ -745,12 +774,10 @@ function addDistrictEnvironment(group, kind) {
     group.add(stripe)
   }
   if (kind === 'neon') {
-    for (const side of [-1, 1]) {
-      for (let index = 0; index < 10; index += 1) {
-        const color = (index + (side > 0 ? 1 : 0)) % 2 ? 0xff4fa3 : 0x35f5e4
-        sceneBox(group, [0.1, 0.06, 1.75], color, [side * 3.82, -8.71, 8.5 - index * 4.15], { emissive: color, emissiveIntensity: 4.4, castShadow: false })
-      }
-    }
+    const leftStreetTube = addGlowTube(group, [0.22, 0.22, 4.45], 0x35f5e4, [-4.04, 0.56, -1.75], 0.28)
+    const rightStreetTube = addGlowTube(group, [0.22, 0.22, 4.45], 0xff4fa3, [4.04, 0.56, -1.75], 0.28)
+    leftStreetTube.userData.neonTubeRole = 'street'
+    rightStreetTube.userData.neonTubeRole = 'street'
   }
 }
 
@@ -899,31 +926,38 @@ function makeLabelTexture(text = 'RD / 01', accent = '#f05d4e') {
   return texture
 }
 
-function makeNeonSignTexture(text = 'NIGHT POST') {
+function makeNeonSignTexture(text = 'NIGHT', color = 0x35f5e4) {
   makeNeonSignTexture.cache ||= new Map()
-  if (makeNeonSignTexture.cache.has(text)) return makeNeonSignTexture.cache.get(text)
+  const cacheKey = `${text}-${color}`
+  if (makeNeonSignTexture.cache.has(cacheKey)) return makeNeonSignTexture.cache.get(cacheKey)
   const canvas = document.createElement('canvas')
   canvas.width = 768
-  canvas.height = 224
+  canvas.height = 320
   const ctx = canvas.getContext('2d')
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.shadowBlur = 28
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = '900 92px Arial Black, Arial, sans-serif'
-  ctx.strokeStyle = '#123c49'
-  ctx.lineWidth = 19
-  ctx.strokeText(text, 384, 112)
-  ctx.shadowColor = '#35f5e4'
-  ctx.strokeStyle = '#35f5e4'
-  ctx.lineWidth = 10
-  ctx.strokeText(text, 384, 112)
-  ctx.shadowColor = '#ff3f9b'
-  ctx.fillStyle = '#fff5de'
-  ctx.fillText(text, 384, 112)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  const fontSize = text.length >= 7 ? 116 : text.length >= 6 ? 132 : 150
+  ctx.font = `900 ${fontSize}px Arial Rounded MT Bold, Arial Black, Arial, sans-serif`
+  const tubeColor = `#${color.toString(16).padStart(6, '0')}`
+  const coreColor = color === 0xff4fa3 ? '#ffd0e8' : '#c5fff9'
+  ctx.shadowColor = tubeColor
+  ctx.shadowBlur = 54
+  ctx.strokeStyle = tubeColor
+  ctx.lineWidth = 28
+  ctx.strokeText(text, 384, 160)
+  ctx.shadowBlur = 22
+  ctx.lineWidth = 18
+  ctx.strokeText(text, 384, 160)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = coreColor
+  ctx.lineWidth = 7
+  ctx.strokeText(text, 384, 160)
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  makeNeonSignTexture.cache.set(text, texture)
+  makeNeonSignTexture.cache.set(cacheKey, texture)
   return texture
 }
 
