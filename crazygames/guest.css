@@ -50,6 +50,8 @@ html, body, #frame {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
   background: #2a2438;
   color: var(--ink);
 }
@@ -70,6 +72,11 @@ button { cursor: pointer; }
   background: linear-gradient(180deg, #5b5e8b 0%, #f6b38a 58%, #ffd4a3 100%);
   color: var(--ink);
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  overscroll-behavior: none;
   transform-origin: center center;
   transition: background 220ms ease;
 }
@@ -82,6 +89,7 @@ button { cursor: pointer; }
 #app[data-district="beacon"] { background: linear-gradient(180deg, #08111f 0%, #152c49 58%, #284b61 100%); }
 
 #stage, .cg-canvas, .vignette { position: absolute; inset: 0; }
+#stage, .cg-canvas { touch-action: none; overscroll-behavior: none; }
 .cg-canvas { width: 1600px; height: 900px; display: block; }
 .vignette {
   pointer-events: none;
@@ -267,7 +275,7 @@ h2 { font-size: 40px; line-height: 0.95; color: var(--ink); }
 #powerFill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), var(--postal)); }
 .power-notch { position: absolute; top: 0; bottom: 0; left: 67%; width: 3px; background: var(--ink); }
 #powerLabel { width: 170px; font-weight: 800; font-size: 28px; }
-#controlHint { margin: 0; flex: 1; font-weight: 800; font-size: 28px; line-height: 1.2; }
+#controlHint { margin: 0; flex: 1; min-width: 0; font-weight: 800; font-size: 28px; line-height: 1.2; }
 
 .tutor {
   position: absolute;
@@ -376,7 +384,7 @@ h2 { font-size: 40px; line-height: 0.95; color: var(--ink); }
 }
 .keystrip ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 .keystrip li { display: flex; align-items: center; gap: 12px; min-height: 28px; }
-.keystrip span { font-weight: 800; font-size: 28px; }
+.keystrip span { font-weight: 800; font-size: 28px; line-height: 1.15; min-width: 0; }
 kbd {
   min-width: 72px;
   padding: 3px 8px;

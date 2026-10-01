@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Rooftop Delivery</title>
     <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" />
     <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js" async></script>
@@ -73,13 +76,13 @@
             <div class="power-bar" aria-hidden="true"><i id="powerFill"></i><i class="power-notch"></i></div>
             <span id="powerLabel" class="cg-copy">Throw power</span>
           </div>
-          <p id="controlHint" class="cg-copy">Hold Space to throw. A and D aim. P pauses. M mutes.</p>
+          <p id="controlHint" class="cg-copy">Drag on the playfield to aim and throw. Desktop: hold Space, A/D aim, W/S power, P pause, M mute.</p>
         </footer>
 
         <section id="tutorialCard" class="tutor" hidden>
           <p id="tutorKicker" class="eyebrow cg-copy">Step 1</p>
           <h2 id="tutorTitle" class="cg-copy">Welcome to the dusk shift</h2>
-          <p id="tutorBody" class="cg-copy">Press Enter to pick up the first crate.</p>
+          <p id="tutorBody" class="cg-copy">Tap Continue to pick up the first crate. On a keyboard, press Enter.</p>
           <div class="tutor-actions">
             <button id="btnTutorialNext" class="btn btn-primary" type="button"><span class="cg-copy">Continue</span></button>
             <button id="btnTutorialSkip" class="btn" type="button"><span class="cg-copy">Skip training</span></button>
@@ -124,14 +127,14 @@
             </ul>
           </aside>
           <aside class="keystrip">
-            <p class="eyebrow cg-copy">Desktop controls</p>
+            <p class="eyebrow cg-copy">Controls</p>
             <ul>
+              <li><span class="cg-copy">Drag on the playfield to aim and throw</span></li>
               <li><kbd class="cg-copy">Space</kbd><span class="cg-copy">Charge and throw</span></li>
               <li><kbd class="cg-copy">A D</kbd><span class="cg-copy">Aim sideways</span></li>
               <li><kbd class="cg-copy">W S</kbd><span class="cg-copy">More or less power</span></li>
               <li><kbd class="cg-copy">P</kbd><span class="cg-copy">Pause</span></li>
               <li><kbd class="cg-copy">M</kbd><span class="cg-copy">Mute</span></li>
-              <li><span class="cg-copy">Mouse drag still throws</span></li>
             </ul>
           </aside>
         </section>
