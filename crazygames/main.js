@@ -901,10 +901,12 @@ function onPointerDown(event) {
   audio.unlock()
   if (event.button !== 0) return
   if (mode === 'title' && event.target === world.canvas) {
+    event.preventDefault()
     startFromTitle()
     return
   }
   if (mode !== 'playing' || !run.ready || run.flying || event.target !== world.canvas) return
+  event.preventDefault()
   pointer = { x: event.clientX, y: event.clientY, id: event.pointerId }
   run.charging = true
   run.keyboardCharging = false
@@ -913,6 +915,7 @@ function onPointerDown(event) {
 
 function onPointerMove(event) {
   if (!pointer || pointer.id !== event.pointerId) return
+  event.preventDefault()
   run.aimDx = clamp((event.clientX - pointer.x) / scale, -120, 120)
   run.aimDy = clamp((pointer.y - event.clientY) / scale, 0, 180)
   beginWindFlip()
@@ -955,8 +958,8 @@ $('#btnResultRetry').addEventListener('click', () => beginRoute(run.routeId))
 $('#btnResultTitle').addEventListener('click', goTitle)
 $('#btnShopNext').addEventListener('click', () => beginRoute(shopBack === 'result-pass' ? nextRouteId() : run.routeId))
 $('#btnShopBack').addEventListener('click', closeShop)
-world.canvas.addEventListener('pointerdown', onPointerDown)
-world.canvas.addEventListener('pointermove', onPointerMove)
+world.canvas.addEventListener('pointerdown', onPointerDown, { passive: false })
+world.canvas.addEventListener('pointermove', onPointerMove, { passive: false })
 world.canvas.addEventListener('pointerup', onPointerUp)
 world.canvas.addEventListener('pointercancel', onPointerUp)
 window.addEventListener('keydown', onKeyDown)
