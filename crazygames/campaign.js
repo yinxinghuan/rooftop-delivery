@@ -26,15 +26,17 @@ export const ROUTES = [
   },
   {
     id: 2, name: 'Breeze Alley', scene: 'laundry',
-    blurb: 'A real crosswind, and the pad starts to creep. Land 3 parcels.',
-    parcels: 5, maxMisses: 3, windMin: 0.32, windMax: 0.95, targetScale: 1.0,
-    deliveredGoal: 3, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 0.62, movePeriod: 6.4,
+    blurb: 'A light crosswind, and the pad creeps. Land 3 parcels.',
+    hook: 'The pad creeps in a light wind. Land 3',
+    parcels: 5, maxMisses: 3, windMin: 0.22, windMax: 0.72, targetScale: 1.05,
+    deliveredGoal: 3, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 0.48, movePeriod: 7.2,
     xRange: [-3.45, 3.45], zRange: [-12.1, -9.0], animals: [],
     parcel: { box: 0x4f83b8, tape: 0xfff5de, label: 'AIR / 02' },
   },
   {
     id: 3, name: 'Sliding Row', scene: 'laundry',
     blurb: 'The drop mark slides. Lead the pad and land 3 of 5.',
+    hook: 'The drop mark slides. Land 3 of 5',
     parcels: 5, maxMisses: 3, windMin: 0.42, windMax: 1.08, targetScale: 0.86,
     deliveredGoal: 3, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 1.12, movePeriod: 4.0,
     xRange: [-3.25, 3.25], zRange: [-12.6, -8.8], animals: [],
@@ -43,6 +45,7 @@ export const ROUTES = [
   {
     id: 4, name: 'Laundry Cats', scene: 'laundry',
     blurb: 'A cat patrols the drop roof. Land 4 parcels.',
+    hook: 'A cat patrols the roof. Land 4',
     parcels: 5, maxMisses: 3, windMin: 0.15, windMax: 0.7, targetScale: 1.14,
     deliveredGoal: 4, bullseyeGoal: 0, scoreGoal: 0, moveAmplitude: 0, movePeriod: 0,
     xRange: [-2.1, 2.1], zRange: [-12.4, -8.8], animals: [{ ...CAT }],
@@ -186,63 +189,71 @@ export function progressLine(route, stats) {
   return parts.join(' · ')
 }
 
+export function hudGoal(route, stats, parcelIndex) {
+  const crate = `Crate ${Math.min(route.parcels, (parcelIndex || 0) + 1)}/${route.parcels}`
+  if (!passedRoute(route, stats)) return `${missionLine(route)} · ${crate}`
+  const left = Math.max(0, route.parcels - (parcelIndex || 0) - 1)
+  return left > 0 ? `Combo still pays · ${crate}` : `Goal met · ${crate}`
+}
+
+export function resultHeading(passed, stats) {
+  if (passed) return 'Route cleared'
+  if ((stats.delivered || 0) > 0 || (stats.score || 0) > 0) return 'So close'
+  return 'Missed the roof'
+}
+
+export function continueLabel(passed, routeId) {
+  if (!passed) return 'Retry this roof'
+  if (routeId <= 3) return 'One more roof'
+  return 'Next route'
+}
+
+export function nextRoofPitch(route) {
+  const next = routeById(route.id + 1)
+  const hook = next.hook || String(next.blurb || '').split('.')[0]
+  return `Next roof: ${next.name}. ${hook}.`
+}
+
+export function retryPitch(route, stats) {
+  const land = Math.max(0, (route.deliveredGoal || 0) - (stats.delivered || 0))
+  const centers = Math.max(0, (route.bullseyeGoal || 0) - (stats.bullseyes || 0))
+  const points = Math.max(0, (route.scoreGoal || 0) - (stats.score || 0))
+  const needs = []
+  if (land) needs.push(land === 1 ? 'land 1 more crate' : `land ${land} more crates`)
+  if (centers) needs.push(centers === 1 ? 'hit the center once' : `hit the center ${centers} times`)
+  if (points) needs.push(`score ${points} more`)
+  if (!needs.length) return 'One careful throw clears this roof. Fresh crates, same street.'
+  const detail = needs.length === 1 ? needs[0] : `${needs[0]}, and ${needs.slice(1).join(', ')}`
+  const sentence = `${detail.charAt(0).toUpperCase()}${detail.slice(1)}.`
+  return `${sentence} Fresh crates, same street.`
+}
+
 export const TUTORIAL = [
   {
-    id: 'welcome',
-    kicker: 'Step 1',
-    title: 'Welcome to the dusk shift',
-    body: 'You throw parcels from this roof to the marked roof across the street. Tap Continue to pick up the first crate. On a keyboard, press Enter.',
-    action: 'enter',
-  },
-  {
-    id: 'charge',
-    kicker: 'Step 2',
-    title: 'Build throw power',
-    body: 'Drag up on the playfield until the power bar passes the notch. On a keyboard, hold Space. Letting go early will not throw yet.',
-    action: 'charge',
-  },
-  {
-    id: 'aim',
-    kicker: 'Step 3',
-    title: 'Aim sideways',
-    body: 'Drag sideways on the playfield. On a keyboard, press A or D, or the arrow keys. The dotted path shows where the crate will travel.',
-    action: 'aim',
-  },
-  {
     id: 'throw',
-    kicker: 'Step 4',
-    title: 'Release to throw',
-    body: 'Release to send the crate. Drag on the playfield to aim and throw, or release Space on a keyboard. Land it anywhere on the far roof.',
+    kicker: 'Step 1',
+    title: 'Land the first crate',
+    body: 'Drag up to charge, sideways to aim, then release. On a keyboard, hold Space and use A or D. Anywhere on the far roof counts.',
     action: 'throw',
     wind: 0,
     target: [0, -10.2],
-    scale: 1.75,
+    scale: 1.85,
   },
   {
     id: 'wind',
-    kicker: 'Step 5',
-    title: 'Read the wind',
-    body: 'The vane shows which way the gust pushes. Aim against it, then throw.',
+    kicker: 'Step 2',
+    title: 'Aim against the wind',
+    body: 'The vane shows which way the gust pushes. Aim the other way, then throw. The roof edge still counts.',
     action: 'throw',
-    wind: 0.48,
-    target: [0.15, -10.5],
-    scale: 1.65,
-  },
-  {
-    id: 'bull',
-    kicker: 'Step 6',
-    title: 'Hit the coral center',
-    body: 'The coral ring is a bullseye and pays more tips. Drop this crate in the center.',
-    action: 'bullseye',
-    wind: 0,
-    target: [0, -10.15],
-    scale: 1.9,
+    wind: 0.36,
+    target: [0.1, -10.35],
+    scale: 1.75,
   },
   {
     id: 'done',
-    kicker: 'Step 7',
-    title: 'Tips open the depot',
-    body: 'Between routes, spend tips on upgrades. Progress stays on this device. Tap Continue, or press Enter, to start Route 1.',
+    kicker: 'Step 3',
+    title: 'The first roof is ready',
+    body: 'Four crates. Land two. The coral ring pays more, and the rest of the roof still counts. Continue to start.',
     action: 'enter',
   },
 ]

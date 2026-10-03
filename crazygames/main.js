@@ -7,11 +7,16 @@ import {
   UPGRADES,
   UPGRADE_ICONS,
   clearBonus,
+  continueLabel,
   effectLine,
+  hudGoal,
   landingForRoute,
   nextMechanic,
+  nextRoofPitch,
   passedRoute,
   progressLine,
+  resultHeading,
+  retryPitch,
   routeById,
   shouldBeginWindFlip,
   tipValue,
@@ -179,9 +184,8 @@ function pop(text, miss, tone = '') {
 function paintHud() {
   const step = tutorialStep()
   const route = liveRoute()
-  const parcel = `${Math.min(route.parcels, run.parcelIndex + 1)}/${route.parcels}`
   $('#hudRoute').textContent = step ? 'Training' : `${String(route.id).padStart(2, '0')} ${route.name}`
-  $('#hudMission').textContent = step ? step.title : `${progressLine(route, run)} · ${parcel}`
+  $('#hudMission').textContent = step ? step.title : hudGoal(route, run, run.parcelIndex)
   $('#hudScore').textContent = pad(run.score)
   $('#hudCombo').textContent = String(run.combo)
   $('#hudTips').textContent = String(profile.tips)
@@ -205,6 +209,12 @@ function paintHud() {
 
 function paintTitle() {
   const route = routeById(profile.selected || 1)
+  const first = !profile.tutorialSeen && profile.unlocked <= 1 && profile.cleared.length === 0
+  app.classList.toggle('is-first-run', first)
+  $('#titleLede').textContent = first
+    ? 'Four crates on the first roof. Land two. Then take one more roof.'
+    : 'The next roof is loaded. Land the crates, then take one more.'
+  $('#btnStart').querySelector('.cg-copy').textContent = first ? 'Throw the first crate' : 'Start route'
   $('#titleRoute').textContent = `Route ${String(route.id).padStart(2, '0')} · ${route.name}`
   $('#titleMission').textContent = route.blurb
   $('#titleBest').textContent = `Best ${pad(profile.best)}`
@@ -374,6 +384,7 @@ function showTutorialStep() {
   $('#tutorTitle').textContent = step.title
   $('#tutorBody').textContent = run.tutorialNote || step.body
   $('#btnTutorialNext').hidden = step.action !== 'enter'
+  $('#btnTutorialSkip').querySelector('.cg-copy').textContent = run.tutorialReplay ? 'Back to route' : 'Skip to route 1'
   $('#tutorialCard').hidden = false
   world.setScene('depot')
   world.setSkin(routeById(1).parcel)
@@ -710,19 +721,20 @@ function finishRoute() {
   const record = run.score > previousBest || run.score > previousRoute
   const stars = starCount(route)
   $('#resultKicker').textContent = `Route ${String(route.id).padStart(2, '0')} · ${route.name}`
-  $('#resultTitle').textContent = run.passed ? 'Route cleared' : 'Route failed'
+  $('#resultTitle').textContent = resultHeading(run.passed, run)
   $('#resultStamp').hidden = !record
   paintStars(stars)
   animateScore(run.score)
   $('#resultTipsPill').textContent = `+${run.tipsEarned} tips`
   if (run.passed && !alreadyOpen) {
-    const next = routeById(route.id + 1)
-    $('#resultUnlock').textContent = `Unlocked route ${String(next.id).padStart(2, '0')} · ${next.name}`
+    $('#resultUnlock').textContent = nextRoofPitch(route)
   } else if (run.passed) {
-    $('#resultUnlock').textContent = 'Tips saved in the depot wallet'
+    $('#resultUnlock').textContent = 'Tips saved. The next roof is ready when you are.'
   } else {
-    $('#resultUnlock').textContent = 'Clear the mission to unlock the next route'
+    $('#resultUnlock').textContent = retryPitch(route, run)
   }
+  $('#btnResultNext').querySelector('.cg-copy').textContent = continueLabel(true, route.id)
+  $('#btnResultRetry').querySelector('.cg-copy').textContent = continueLabel(false, route.id)
   $('#resultMission').textContent = `${run.passed ? 'Mission complete' : 'Mission incomplete'} · ${progressLine(route, run)}`
   $('#resultBest').textContent = pad(profile.best)
   $('#resultLanded').textContent = `${run.delivered}/${route.parcels}`
