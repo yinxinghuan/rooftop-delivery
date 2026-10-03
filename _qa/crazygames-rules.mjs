@@ -1,8 +1,23 @@
 import assert from 'node:assert/strict'
 import { createFlight, landingKind, planThrow, stepFlight } from '../crazygames/aim.js'
-import { ROUTES, landingForRoute, nextMechanic, overtimeRoute, passedRoute, shouldBeginWindFlip } from '../crazygames/campaign.js'
+import { ROUTES, TUTORIAL, continueLabel, hudGoal, landingForRoute, nextMechanic, nextRoofPitch, overtimeRoute, passedRoute, resultHeading, retryPitch, shouldBeginWindFlip } from '../crazygames/campaign.js'
 
 assert.equal(ROUTES.length, 10, 'the fixed campaign must remain ten routes')
+assert.equal(TUTORIAL.length, 3, 'first-run training stays three steps')
+assert.equal(TUTORIAL[0].action, 'throw', 'the first step is a real throw, so gameplay can start immediately')
+assert.equal(TUTORIAL.some((step) => step.action === 'bullseye'), false, 'training must not gate on a bullseye')
+assert.equal(TUTORIAL.at(-1).action, 'enter')
+assert.equal(continueLabel(false, 1), 'Retry this roof')
+assert.equal(continueLabel(true, 1), 'One more roof')
+assert.equal(continueLabel(true, 4), 'Next route')
+assert.equal(resultHeading(false, { delivered: 1, score: 25 }), 'So close')
+assert.equal(resultHeading(false, { delivered: 0, score: 0 }), 'Missed the roof')
+assert.equal(retryPitch(ROUTES[0], { delivered: 1, bullseyes: 0, score: 25 }), 'Land 1 more crate. Fresh crates, same street.')
+assert.match(nextRoofPitch(ROUTES[0]), /^Next roof: Breeze Alley\./)
+assert.equal(hudGoal(ROUTES[0], { delivered: 0, bullseyes: 0, score: 0 }, 0), 'Land 2 · Crate 1/4')
+assert.match(hudGoal(ROUTES[0], { delivered: 2, bullseyes: 0, score: 50 }, 1), /Combo still pays/)
+assert.ok(ROUTES[1].moveAmplitude > 0 && ROUTES[1].moveAmplitude < 0.85, 'route 2 still teaches a creeping pad')
+assert.ok(ROUTES[1].windMax >= 0.6 && ROUTES[1].windMax <= 0.8, 'route 2 wind stays a real gust without the old spike')
 assert.deepEqual(ROUTES.filter((route) => route.windFlip).map((route) => route.id), [6, 9, 10])
 assert.deepEqual(ROUTES.filter((route) => route.dualTarget).map((route) => route.id), [8, 10])
 assert.deepEqual(ROUTES.filter((route) => route.fragile).map((route) => route.id), [7])

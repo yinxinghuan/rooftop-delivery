@@ -474,7 +474,10 @@ kbd {
 .stars .star { width: 34px; height: 34px; color: var(--paper-deep); }
 .stars .star.is-on { color: var(--gold-deep); filter: drop-shadow(2px 2px 0 var(--ink)); }
 .score { font-size: 64px; line-height: 0.9; margin: 0 0 6px; color: var(--ink); }
-.reward-row { gap: 10px; margin-bottom: 6px; min-height: 36px; }
+.reward-row { gap: 10px; margin-bottom: 6px; min-height: 36px; flex-wrap: wrap; }
+#app.is-first-run #routePicker,
+#app.is-first-run #btnShopTitle,
+#app.is-first-run .meta-row { display: none; }
 .pill {
   margin: 0;
   padding: 4px 12px;
@@ -486,7 +489,7 @@ kbd {
   box-shadow: 3px 3px 0 var(--ink);
   white-space: nowrap;
 }
-.unlock { margin: 0; font-weight: 800; font-size: 28px; }
+.unlock { margin: 0; font-weight: 800; font-size: 28px; flex: 1 1 420px; line-height: 1.15; }
 #resultMission { margin: 0 0 8px; font-weight: 800; font-size: 28px; }
 
 .stats {
